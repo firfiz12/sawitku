@@ -1,0 +1,34 @@
+[
+    {
+        "merged": "com.sawitku.app-merged_res-62:/drawable_ic_notification.xml.flat",
+        "source": "com.sawitku.app-main-64:/drawable/ic_notification.xml"
+    },
+    {
+        "merged": "com.sawitku.app-merged_res-62:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.sawitku.app-main-64:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.sawitku.app-merged_res-62:/mipmap-anydpi_ic_launcher_round.xml.flat",
+        "source": "com.sawitku.app-main-64:/mipmap-anydpi/ic_launcher_round.xml"
+    },
+    {
+        "merged": "C:\\Users\\hafiz\\.gradle\\daemon\\8.5\\com.sawitku.app-merged_res-62:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\hafiz\\.gradle\\daemon\\8.5\\com.sawitku.app-main-64:\\mipmap-anydpi-v26\\ic_launcher.xml"
+    },
+    {
+        "merged": "com.sawitku.app-merged_res-62:/mipmap-anydpi_ic_launcher.xml.flat",
+        "source": "com.sawitku.app-main-64:/mipmap-anydpi/ic_launcher.xml"
+    },
+    {
+        "merged": "C:\\Users\\hafiz\\.gradle\\daemon\\8.5\\com.sawitku.app-merged_res-62:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\hafiz\\.gradle\\daemon\\8.5\\com.sawitku.app-main-64:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.sawitku.app-merged_res-62:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.sawitku.app-main-64:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "C:\\Users\\hafiz\\.gradle\\daemon\\8.5\\com.sawitku.app-merged_res-62:\\drawable_ic_launcher_foreground.xml.flat",
+        "source": "C:\\Users\\hafiz\\.gradle\\daemon\\8.5\\com.sawitku.app-main-64:\\drawable\\ic_launcher_foreground.xml"
+    }
+]
