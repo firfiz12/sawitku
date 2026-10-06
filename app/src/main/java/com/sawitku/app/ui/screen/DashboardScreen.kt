@@ -73,7 +73,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
     val panenList by viewModel.panenList.collectAsState()
     val biayaList by viewModel.biayaList.collectAsState()
 
-    var selectedKebunId by remember { mutableStateOf<Long?>(null) }
+    var selectedKebunId by remember { mutableStateOf<String?>(null) }
 
     // Filtered data based on selected kebun
     val activePanen = if (selectedKebunId == null) panenList else panenList.filter { it.kebunId == selectedKebunId }
@@ -198,8 +198,8 @@ fun DashboardScreen(viewModel: MainViewModel) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Kebun Filter
-            val kebunOptions = listOf(FilterOption("Semua Kebun", null as Long?)) +
-                    kebunList.map { FilterOption(it.nama, it.id as Long?) }
+            val kebunOptions = listOf(FilterOption<String?>("Semua Kebun", null)) +
+                    kebunList.map { FilterOption<String?>(it.nama, it.id) }
 
             FilterRow(
                 title = "FILTER KEBUN",

@@ -11,21 +11,30 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PanenDao {
-    @Query("SELECT * FROM panen ORDER BY tanggal DESC")
+    @Query("SELECT * FROM panen WHERE isDeleted = 0 ORDER BY tanggal DESC")
     fun getAll(): Flow<List<PanenEntity>>
 
-    @Query("SELECT * FROM panen ORDER BY tanggal DESC")
+    @Query("SELECT * FROM panen WHERE isDeleted = 0 ORDER BY tanggal DESC")
     suspend fun getAllOnce(): List<PanenEntity>
 
-    @Query("SELECT * FROM panen WHERE kebunId = :kebunId ORDER BY tanggal DESC")
-    fun getByKebun(kebunId: Long): Flow<List<PanenEntity>>
+    @Query("SELECT * FROM panen WHERE kebunId = :kebunId AND isDeleted = 0 ORDER BY tanggal DESC")
+    fun getByKebun(kebunId: String): Flow<List<PanenEntity>>
+
+    @Query("SELECT * FROM panen WHERE id = :id AND isDeleted = 0")
+    suspend fun getById(id: String): PanenEntity?
+
+    @Query("SELECT * FROM panen WHERE syncStatus != 'SYNCED'")
+    suspend fun getPendingSync(): List<PanenEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(panen: PanenEntity): Long
+    suspend fun insert(panen: PanenEntity)
 
     @Update
     suspend fun update(panen: PanenEntity)
 
+    @Query("UPDATE panen SET isDeleted = 1, syncStatus = 'PENDING', updatedAt = :updatedAt WHERE id = :id")
+    suspend fun softDelete(id: String, updatedAt: Long = System.currentTimeMillis())
+
     @Delete
-    suspend fun delete(panen: PanenEntity)
+    suspend fun hardDelete(panen: PanenEntity)
 }

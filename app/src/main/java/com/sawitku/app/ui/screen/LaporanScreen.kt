@@ -70,7 +70,7 @@ fun LaporanScreen(viewModel: MainViewModel) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
 
     // Filter states
-    var selectedKebunId by remember { mutableStateOf<Long?>(null) }
+    var selectedKebunId by remember { mutableStateOf<String?>(null) }
     var selectedYear by remember { mutableStateOf(currentYear) }
 
     // Distinct years available
@@ -165,8 +165,8 @@ fun LaporanScreen(viewModel: MainViewModel) {
             Spacer(modifier = Modifier.height(8.dp))
 
             // FILTER 2: Kebun
-            val kebunOptions = listOf(FilterOption("Semua Kebun", null as Long?)) +
-                    kebunList.map { FilterOption(it.nama, it.id as Long?) }
+            val kebunOptions = listOf(FilterOption<String?>("Semua Kebun", null)) +
+                    kebunList.map { FilterOption<String?>(it.nama, it.id) }
 
             FilterRow(
                 title = "FILTER KEBUN",

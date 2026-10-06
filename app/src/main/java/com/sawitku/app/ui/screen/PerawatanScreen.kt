@@ -109,7 +109,7 @@ fun PerawatanScreen(viewModel: MainViewModel) {
     var toDelete by remember { mutableStateOf<PerawatanEntity?>(null) }
 
     // Filter states
-    var selectedKebunId by remember { mutableStateOf<Long?>(null) }
+    var selectedKebunId by remember { mutableStateOf<String?>(null) }
     var selectedJenis by remember { mutableStateOf("Semua") }
     var selectedSubFilter by remember { mutableStateOf<String?>(null) }
 
@@ -169,8 +169,8 @@ fun PerawatanScreen(viewModel: MainViewModel) {
             )
 
             // FILTER 1: Kebun Filter
-            val kebunOptions = listOf(FilterOption("Semua Kebun", null as Long?)) +
-                    kebunList.map { FilterOption(it.nama, it.id as Long?) }
+            val kebunOptions = listOf(FilterOption<String?>("Semua Kebun", null)) +
+                    kebunList.map { FilterOption<String?>(it.nama, it.id) }
 
             FilterRow(
                 title = "FILTER KEBUN",
@@ -499,7 +499,7 @@ fun PerawatanFormDialog(
     onSave: (PerawatanEntity, Boolean) -> Unit
 ) {
     var tanggal by remember { mutableStateOf(initial?.tanggal ?: System.currentTimeMillis()) }
-    var kebunId by remember { mutableStateOf(initial?.kebunId ?: kebunList.firstOrNull()?.id ?: 0L) }
+    var kebunId by remember { mutableStateOf(initial?.kebunId ?: kebunList.firstOrNull()?.id ?: "") }
     var jenis by remember { mutableStateOf(initial?.jenis ?: JENIS_PERAWATAN_LIST.first()) }
     var jenisPupuk by remember { mutableStateOf(initial?.jenisPupuk ?: "") }
     var jenisRacun by remember { mutableStateOf(initial?.jenisRacun ?: "") }
@@ -617,14 +617,13 @@ fun PerawatanFormDialog(
         },
         confirmButton = {
             Button(onClick = {
-                if (kebunId == 0L) {
+                if (kebunId.isBlank()) {
                     error = "Pilih kebun terlebih dahulu"
                     return@Button
                 }
                 val biayaVal = biaya.toDoubleOrNull() ?: 0.0
                 onSave(
                     (initial ?: PerawatanEntity()).copy(
-                        id = initial?.id ?: 0,
                         tanggal = tanggal,
                         kebunId = kebunId,
                         jenis = jenis,
@@ -661,7 +660,7 @@ fun PerawatanFormDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun KebunDropdownModern(kebunList: List<KebunEntity>, selectedId: Long, onSelect: (Long) -> Unit) {
+fun KebunDropdownModern(kebunList: List<KebunEntity>, selectedId: String, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val selectedKebun = kebunList.find { it.id == selectedId }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {

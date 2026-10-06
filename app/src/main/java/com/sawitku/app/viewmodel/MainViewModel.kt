@@ -10,6 +10,7 @@ import com.sawitku.app.data.local.entity.BiayaEntity
 import com.sawitku.app.data.local.entity.KebunEntity
 import com.sawitku.app.data.local.entity.PanenEntity
 import com.sawitku.app.data.local.entity.PerawatanEntity
+import com.sawitku.app.data.local.entity.SyncStatus
 import com.sawitku.app.data.repository.SawitRepository
 import com.sawitku.app.notification.ReminderScheduler
 import com.sawitku.app.util.Formatters
@@ -56,7 +57,10 @@ class MainViewModel(
                                 deskripsi = p.deskripsi.ifBlank { "Biaya perawatan: ${p.jenis}" },
                                 jumlah = p.biaya,
                                 sourceType = "PERAWATAN",
-                                sourceId = p.id
+                                sourceId = p.id,
+                                updatedAt = System.currentTimeMillis(),
+                                syncStatus = SyncStatus.PENDING,
+                                isDeleted = false
                             )
                         )
                     } else if (existing.jumlah != p.biaya || existing.tanggal != p.tanggal || existing.kebunId != p.kebunId || existing.kategori != kategoriDesc) {
@@ -66,7 +70,9 @@ class MainViewModel(
                                 kebunId = p.kebunId,
                                 kategori = kategoriDesc,
                                 deskripsi = p.deskripsi.ifBlank { existing.deskripsi },
-                                jumlah = p.biaya
+                                jumlah = p.biaya,
+                                updatedAt = System.currentTimeMillis(),
+                                syncStatus = SyncStatus.PENDING
                             )
                         )
                     }
@@ -88,7 +94,10 @@ class MainViewModel(
                                 deskripsi = pn.keterangan.ifBlank { "Biaya produksi panen" },
                                 jumlah = pn.biayaProduksi,
                                 sourceType = "PANEN",
-                                sourceId = pn.id
+                                sourceId = pn.id,
+                                updatedAt = System.currentTimeMillis(),
+                                syncStatus = SyncStatus.PENDING,
+                                isDeleted = false
                             )
                         )
                     } else if (existing.jumlah != pn.biayaProduksi || existing.tanggal != pn.tanggal || existing.kebunId != pn.kebunId) {
@@ -98,7 +107,9 @@ class MainViewModel(
                                 kebunId = pn.kebunId,
                                 kategori = "Biaya Panen",
                                 deskripsi = pn.keterangan.ifBlank { existing.deskripsi },
-                                jumlah = pn.biayaProduksi
+                                jumlah = pn.biayaProduksi,
+                                updatedAt = System.currentTimeMillis(),
+                                syncStatus = SyncStatus.PENDING
                             )
                         )
                     }
@@ -120,7 +131,12 @@ class MainViewModel(
     // Kebun Management
     fun saveKebun(kebun: KebunEntity, isEdit: Boolean) {
         viewModelScope.launch {
-            if (isEdit) repository.updateKebun(kebun) else repository.insertKebun(kebun)
+            val toSave = kebun.copy(
+                updatedAt = System.currentTimeMillis(),
+                syncStatus = SyncStatus.PENDING,
+                isDeleted = false
+            )
+            if (isEdit) repository.updateKebun(toSave) else repository.insertKebun(toSave)
         }
     }
 
@@ -132,38 +148,48 @@ class MainViewModel(
     fun savePerawatan(perawatan: PerawatanEntity, isEdit: Boolean) {
         viewModelScope.launch {
             val context = getApplication<Application>().applicationContext
-            val savedId = if (isEdit) {
-                repository.updatePerawatan(perawatan)
-                perawatan.id
+            val toSave = perawatan.copy(
+                updatedAt = System.currentTimeMillis(),
+                syncStatus = SyncStatus.PENDING,
+                isDeleted = false
+            )
+            if (isEdit) {
+                repository.updatePerawatan(toSave)
             } else {
-                repository.insertPerawatan(perawatan)
+                repository.insertPerawatan(toSave)
             }
+            val savedId = toSave.id
 
             // Sync with Biaya
-            val kategoriDesc = formatPerawatanKategori(perawatan)
+            val kategoriDesc = formatPerawatanKategori(toSave)
             val existingBiaya = repository.getBiayaBySource("PERAWATAN", savedId)
 
-            if (perawatan.biaya > 0) {
+            if (toSave.biaya > 0) {
                 if (existingBiaya != null) {
                     repository.updateBiaya(
                         existingBiaya.copy(
-                            tanggal = perawatan.tanggal,
-                            kebunId = perawatan.kebunId,
+                            tanggal = toSave.tanggal,
+                            kebunId = toSave.kebunId,
                             kategori = kategoriDesc,
-                            deskripsi = perawatan.deskripsi.ifBlank { "Biaya perawatan: ${perawatan.jenis}" },
-                            jumlah = perawatan.biaya
+                            deskripsi = toSave.deskripsi.ifBlank { "Biaya perawatan: ${toSave.jenis}" },
+                            jumlah = toSave.biaya,
+                            updatedAt = System.currentTimeMillis(),
+                            syncStatus = SyncStatus.PENDING
                         )
                     )
                 } else {
                     repository.insertBiaya(
                         BiayaEntity(
-                            tanggal = perawatan.tanggal,
-                            kebunId = perawatan.kebunId,
+                            tanggal = toSave.tanggal,
+                            kebunId = toSave.kebunId,
                             kategori = kategoriDesc,
-                            deskripsi = perawatan.deskripsi.ifBlank { "Biaya perawatan: ${perawatan.jenis}" },
-                            jumlah = perawatan.biaya,
+                            deskripsi = toSave.deskripsi.ifBlank { "Biaya perawatan: ${toSave.jenis}" },
+                            jumlah = toSave.biaya,
                             sourceType = "PERAWATAN",
-                            sourceId = savedId
+                            sourceId = savedId,
+                            updatedAt = System.currentTimeMillis(),
+                            syncStatus = SyncStatus.PENDING,
+                            isDeleted = false
                         )
                     )
                 }
@@ -172,17 +198,17 @@ class MainViewModel(
             }
 
             // Schedule reminder if enabled
-            val reminderId = (100000 + savedId).toInt()
-            if (perawatan.reminderEnabled && perawatan.reminderTanggal > System.currentTimeMillis()) {
-                val detail = if (perawatan.jenisPupuk.isNotBlank()) " (${perawatan.jenisPupuk})"
-                else if (perawatan.jenisRacun.isNotBlank()) " (${perawatan.jenisRacun})"
+            val reminderId = ReminderScheduler.getPerawatanReminderId(savedId)
+            if (toSave.reminderEnabled && toSave.reminderTanggal > System.currentTimeMillis()) {
+                val detail = if (toSave.jenisPupuk.isNotBlank()) " (${toSave.jenisPupuk})"
+                else if (toSave.jenisRacun.isNotBlank()) " (${toSave.jenisRacun})"
                 else ""
                 ReminderScheduler.scheduleReminder(
                     context = context,
                     reminderId = reminderId,
-                    triggerAtMillis = perawatan.reminderTanggal,
-                    title = "Jadwal Perawatan: ${perawatan.jenis}",
-                    message = "Waktunya melakukan ${perawatan.jenis}$detail pada tanggal ${Formatters.formatDate(perawatan.reminderTanggal)}"
+                    triggerAtMillis = toSave.reminderTanggal,
+                    title = "Jadwal Perawatan: ${toSave.jenis}",
+                    message = "Waktunya melakukan ${toSave.jenis}$detail pada tanggal ${Formatters.formatDate(toSave.reminderTanggal)}"
                 )
             } else {
                 ReminderScheduler.cancelReminder(context, reminderId)
@@ -193,7 +219,7 @@ class MainViewModel(
     fun deletePerawatan(perawatan: PerawatanEntity) {
         viewModelScope.launch {
             val context = getApplication<Application>().applicationContext
-            ReminderScheduler.cancelReminder(context, (100000 + perawatan.id).toInt())
+            ReminderScheduler.cancelReminder(context, ReminderScheduler.getPerawatanReminderId(perawatan.id))
             repository.deleteBiayaBySource("PERAWATAN", perawatan.id)
             repository.deletePerawatan(perawatan)
         }
@@ -203,42 +229,58 @@ class MainViewModel(
     fun savePanen(panen: PanenEntity, isEdit: Boolean) {
         viewModelScope.launch {
             val context = getApplication<Application>().applicationContext
-            val savedId = if (isEdit) {
-                repository.updatePanen(panen)
-                panen.id
+            val toSave = panen.copy(
+                updatedAt = System.currentTimeMillis(),
+                syncStatus = SyncStatus.PENDING,
+                isDeleted = false
+            )
+            if (isEdit) {
+                repository.updatePanen(toSave)
             } else {
-                repository.insertPanen(panen)
+                repository.insertPanen(toSave)
             }
+            val savedId = toSave.id
 
             // Update tanggal panen terakhir di kebun
-            val kebun = repository.getKebunById(panen.kebunId)
-            if (kebun != null && panen.tanggal > kebun.tanggalPanenTerakhir) {
-                repository.updateKebun(kebun.copy(tanggalPanenTerakhir = panen.tanggal))
+            val kebun = repository.getKebunById(toSave.kebunId)
+            if (kebun != null && toSave.tanggal > kebun.tanggalPanenTerakhir) {
+                repository.updateKebun(
+                    kebun.copy(
+                        tanggalPanenTerakhir = toSave.tanggal,
+                        updatedAt = System.currentTimeMillis(),
+                        syncStatus = SyncStatus.PENDING
+                    )
+                )
             }
 
             // Sync with Biaya for production cost
             val existingBiaya = repository.getBiayaBySource("PANEN", savedId)
-            if (panen.biayaProduksi > 0) {
+            if (toSave.biayaProduksi > 0) {
                 if (existingBiaya != null) {
                     repository.updateBiaya(
                         existingBiaya.copy(
-                            tanggal = panen.tanggal,
-                            kebunId = panen.kebunId,
+                            tanggal = toSave.tanggal,
+                            kebunId = toSave.kebunId,
                             kategori = "Biaya Panen",
-                            deskripsi = panen.keterangan.ifBlank { "Biaya produksi panen" },
-                            jumlah = panen.biayaProduksi
+                            deskripsi = toSave.keterangan.ifBlank { "Biaya produksi panen" },
+                            jumlah = toSave.biayaProduksi,
+                            updatedAt = System.currentTimeMillis(),
+                            syncStatus = SyncStatus.PENDING
                         )
                     )
                 } else {
                     repository.insertBiaya(
                         BiayaEntity(
-                            tanggal = panen.tanggal,
-                            kebunId = panen.kebunId,
+                            tanggal = toSave.tanggal,
+                            kebunId = toSave.kebunId,
                             kategori = "Biaya Panen",
-                            deskripsi = panen.keterangan.ifBlank { "Biaya produksi panen" },
-                            jumlah = panen.biayaProduksi,
+                            deskripsi = toSave.keterangan.ifBlank { "Biaya produksi panen" },
+                            jumlah = toSave.biayaProduksi,
                             sourceType = "PANEN",
-                            sourceId = savedId
+                            sourceId = savedId,
+                            updatedAt = System.currentTimeMillis(),
+                            syncStatus = SyncStatus.PENDING,
+                            isDeleted = false
                         )
                     )
                 }
@@ -247,15 +289,15 @@ class MainViewModel(
             }
 
             // Schedule reminder for next harvest
-            val reminderId = (200000 + savedId).toInt()
-            if (panen.reminderEnabled && panen.reminderTanggal > System.currentTimeMillis()) {
+            val reminderId = ReminderScheduler.getPanenReminderId(savedId)
+            if (toSave.reminderEnabled && toSave.reminderTanggal > System.currentTimeMillis()) {
                 val kebunNama = kebun?.nama ?: "Kebun Sawit"
                 ReminderScheduler.scheduleReminder(
                     context = context,
                     reminderId = reminderId,
-                    triggerAtMillis = panen.reminderTanggal,
+                    triggerAtMillis = toSave.reminderTanggal,
                     title = "Jadwal Panen: $kebunNama",
-                    message = "Waktunya panen berikutnya untuk $kebunNama pada tanggal ${Formatters.formatDate(panen.reminderTanggal)}"
+                    message = "Waktunya panen berikutnya untuk $kebunNama pada tanggal ${Formatters.formatDate(toSave.reminderTanggal)}"
                 )
             } else {
                 ReminderScheduler.cancelReminder(context, reminderId)
@@ -266,7 +308,7 @@ class MainViewModel(
     fun deletePanen(panen: PanenEntity) {
         viewModelScope.launch {
             val context = getApplication<Application>().applicationContext
-            ReminderScheduler.cancelReminder(context, (200000 + panen.id).toInt())
+            ReminderScheduler.cancelReminder(context, ReminderScheduler.getPanenReminderId(panen.id))
             repository.deleteBiayaBySource("PANEN", panen.id)
             repository.deletePanen(panen)
         }
@@ -275,7 +317,12 @@ class MainViewModel(
     // Biaya Mandiri
     fun saveBiaya(biaya: BiayaEntity, isEdit: Boolean) {
         viewModelScope.launch {
-            val itemToSave = if (biaya.sourceType.isBlank()) biaya.copy(sourceType = "MANDIRI") else biaya
+            val baseItem = if (biaya.sourceType.isBlank()) biaya.copy(sourceType = "MANDIRI") else biaya
+            val itemToSave = baseItem.copy(
+                updatedAt = System.currentTimeMillis(),
+                syncStatus = SyncStatus.PENDING,
+                isDeleted = false
+            )
             if (isEdit) repository.updateBiaya(itemToSave) else repository.insertBiaya(itemToSave)
         }
     }

@@ -38,7 +38,7 @@ class ReminderReceiver : BroadcastReceiver() {
                             else ""
                         ReminderScheduler.scheduleReminder(
                             context = context,
-                            reminderId = (100000 + perawatan.id).toInt(),
+                            reminderId = ReminderScheduler.getPerawatanReminderId(perawatan.id),
                             triggerAtMillis = perawatan.reminderTanggal,
                             title = "Jadwal Perawatan: ${perawatan.jenis}",
                             message = "Waktunya melakukan ${perawatan.jenis}$detail pada tanggal ${Formatters.formatDate(perawatan.reminderTanggal)}"
@@ -51,7 +51,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         val kebunNama = repository.getKebunById(panen.kebunId)?.nama ?: "Kebun Sawit"
                         ReminderScheduler.scheduleReminder(
                             context = context,
-                            reminderId = (200000 + panen.id).toInt(),
+                            reminderId = ReminderScheduler.getPanenReminderId(panen.id),
                             triggerAtMillis = panen.reminderTanggal,
                             title = "Jadwal Panen: $kebunNama",
                             message = "Waktunya panen berikutnya untuk $kebunNama pada tanggal ${Formatters.formatDate(panen.reminderTanggal)}"

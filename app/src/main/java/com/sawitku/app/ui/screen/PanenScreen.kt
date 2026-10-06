@@ -77,7 +77,7 @@ fun PanenScreen(viewModel: MainViewModel) {
     var toDelete by remember { mutableStateOf<PanenEntity?>(null) }
 
     // Filter states
-    var selectedKebunId by remember { mutableStateOf<Long?>(null) }
+    var selectedKebunId by remember { mutableStateOf<String?>(null) }
     var selectedPeriode by remember { mutableStateOf(PeriodeFilter.SEMUA) }
 
     // Filtered data
@@ -124,8 +124,8 @@ fun PanenScreen(viewModel: MainViewModel) {
             )
 
             // FILTER 1: Kebun
-            val kebunOptions = listOf(FilterOption("Semua Kebun", null as Long?)) +
-                    kebunList.map { FilterOption(it.nama, it.id as Long?) }
+            val kebunOptions = listOf(FilterOption<String?>("Semua Kebun", null)) +
+                    kebunList.map { FilterOption<String?>(it.nama, it.id) }
 
             FilterRow(
                 title = "FILTER KEBUN",
@@ -447,7 +447,7 @@ fun PanenFormDialog(
     onSave: (PanenEntity, Boolean) -> Unit
 ) {
     var tanggal by remember { mutableStateOf(initial?.tanggal ?: System.currentTimeMillis()) }
-    var kebunId by remember { mutableStateOf(initial?.kebunId ?: kebunList.firstOrNull()?.id ?: 0L) }
+    var kebunId by remember { mutableStateOf(initial?.kebunId ?: kebunList.firstOrNull()?.id ?: "") }
     var beratKg by remember { mutableStateOf(initial?.beratKg?.takeIf { it > 0 }?.toString() ?: "") }
     var hargaPerKg by remember { mutableStateOf(initial?.hargaPerKg?.takeIf { it > 0 }?.toString() ?: "") }
 
@@ -637,14 +637,13 @@ fun PanenFormDialog(
         confirmButton = {
             Button(onClick = {
                 when {
-                    kebunId == 0L -> error = "Pilih kebun terlebih dahulu"
+                    kebunId.isBlank() -> error = "Pilih kebun terlebih dahulu"
                     beratVal <= 0 && beratBrondolanVal <= 0 -> error = "Masukkan berat TBS atau berat brondolan minimal lebih dari 0 kg"
                     beratVal > 0 && hargaVal <= 0 -> error = "Harga per kg TBS harus lebih dari Rp 0"
                     beratBrondolanVal > 0 && hargaBrondolanVal <= 0 -> error = "Harga per kg brondolan harus lebih dari Rp 0"
                     else -> {
                         onSave(
                             (initial ?: PanenEntity()).copy(
-                                id = initial?.id ?: 0,
                                 tanggal = tanggal,
                                 kebunId = kebunId,
                                 beratKg = beratVal,

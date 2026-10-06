@@ -2,13 +2,14 @@ package com.sawitku.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 @Entity(tableName = "panen")
 data class PanenEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
     val tanggal: Long = 0L,
-    val kebunId: Long = 0L,
+    val kebunId: String = "",
     val beratKg: Double = 0.0, // Berat TBS
     val hargaPerKg: Double = 0.0, // Harga TBS per kg
     val beratBrondolanKg: Double = 0.0, // Opsional berat brondolan
@@ -18,5 +19,8 @@ data class PanenEntity(
     val biayaProduksi: Double = 0.0,
     val keterangan: String = "",
     val reminderEnabled: Boolean = false,
-    val reminderTanggal: Long = 0L
+    val reminderTanggal: Long = 0L,
+    val updatedAt: Long = System.currentTimeMillis(),
+    val syncStatus: String = SyncStatus.PENDING,
+    val isDeleted: Boolean = false
 )

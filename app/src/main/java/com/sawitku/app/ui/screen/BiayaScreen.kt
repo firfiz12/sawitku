@@ -74,7 +74,7 @@ fun BiayaScreen(viewModel: MainViewModel) {
     var toDelete by remember { mutableStateOf<BiayaEntity?>(null) }
 
     // Filter states
-    var selectedKebunId by remember { mutableStateOf<Long?>(null) }
+    var selectedKebunId by remember { mutableStateOf<String?>(null) }
     var selectedKategori by remember { mutableStateOf("Semua") }
     var selectedPeriode by remember { mutableStateOf(PeriodeFilter.SEMUA) }
 
@@ -123,8 +123,8 @@ fun BiayaScreen(viewModel: MainViewModel) {
             )
 
             // FILTER 1: Kebun
-            val kebunOptions = listOf(FilterOption("Semua Kebun", null as Long?)) +
-                    kebunList.map { FilterOption(it.nama, it.id as Long?) }
+            val kebunOptions = listOf(FilterOption<String?>("Semua Kebun", null)) +
+                    kebunList.map { FilterOption<String?>(it.nama, it.id) }
 
             FilterRow(
                 title = "FILTER KEBUN",
@@ -427,7 +427,6 @@ fun BiayaFormDialog(
                 } else {
                     onSave(
                         (initial ?: BiayaEntity()).copy(
-                            id = initial?.id ?: 0,
                             tanggal = tanggal,
                             kebunId = kebunId,
                             kategori = kategori.trim(),
@@ -455,8 +454,8 @@ fun BiayaFormDialog(
 @Composable
 fun KebunDropdownOptionalModern(
     kebunList: List<KebunEntity>,
-    selectedId: Long?,
-    onSelect: (Long?) -> Unit
+    selectedId: String?,
+    onSelect: (String?) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedKebun = kebunList.find { it.id == selectedId }

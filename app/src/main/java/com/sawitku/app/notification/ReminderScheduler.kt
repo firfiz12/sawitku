@@ -8,6 +8,9 @@ import android.os.Build
 
 object ReminderScheduler {
 
+    fun getPerawatanReminderId(id: String): Int = 100_000_000 + (id.hashCode() and 0x0FFFFFFF)
+    fun getPanenReminderId(id: String): Int = 200_000_000 + (id.hashCode() and 0x0FFFFFFF)
+
     fun scheduleReminder(
         context: Context,
         reminderId: Int,

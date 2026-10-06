@@ -11,21 +11,30 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PerawatanDao {
-    @Query("SELECT * FROM perawatan ORDER BY tanggal DESC")
+    @Query("SELECT * FROM perawatan WHERE isDeleted = 0 ORDER BY tanggal DESC")
     fun getAll(): Flow<List<PerawatanEntity>>
 
-    @Query("SELECT * FROM perawatan ORDER BY tanggal DESC")
+    @Query("SELECT * FROM perawatan WHERE isDeleted = 0 ORDER BY tanggal DESC")
     suspend fun getAllOnce(): List<PerawatanEntity>
 
-    @Query("SELECT * FROM perawatan WHERE kebunId = :kebunId ORDER BY tanggal DESC")
-    fun getByKebun(kebunId: Long): Flow<List<PerawatanEntity>>
+    @Query("SELECT * FROM perawatan WHERE kebunId = :kebunId AND isDeleted = 0 ORDER BY tanggal DESC")
+    fun getByKebun(kebunId: String): Flow<List<PerawatanEntity>>
+
+    @Query("SELECT * FROM perawatan WHERE id = :id AND isDeleted = 0")
+    suspend fun getById(id: String): PerawatanEntity?
+
+    @Query("SELECT * FROM perawatan WHERE syncStatus != 'SYNCED'")
+    suspend fun getPendingSync(): List<PerawatanEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(perawatan: PerawatanEntity): Long
+    suspend fun insert(perawatan: PerawatanEntity)
 
     @Update
     suspend fun update(perawatan: PerawatanEntity)
 
+    @Query("UPDATE perawatan SET isDeleted = 1, syncStatus = 'PENDING', updatedAt = :updatedAt WHERE id = :id")
+    suspend fun softDelete(id: String, updatedAt: Long = System.currentTimeMillis())
+
     @Delete
-    suspend fun delete(perawatan: PerawatanEntity)
+    suspend fun hardDelete(perawatan: PerawatanEntity)
 }
