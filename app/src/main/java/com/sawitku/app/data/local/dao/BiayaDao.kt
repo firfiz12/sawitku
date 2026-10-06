@@ -20,6 +20,12 @@ interface BiayaDao {
     @Query("SELECT * FROM biaya WHERE sourceType = :sourceType AND sourceId = :sourceId AND isDeleted = 0 LIMIT 1")
     suspend fun getBySource(sourceType: String, sourceId: String): BiayaEntity?
 
+    @Query("SELECT * FROM biaya WHERE id = :id AND isDeleted = 0")
+    suspend fun getById(id: String): BiayaEntity?
+
+    @Query("SELECT * FROM biaya WHERE id = :id")
+    suspend fun getByIdIncludingDeleted(id: String): BiayaEntity?
+
     @Query("UPDATE biaya SET isDeleted = 1, syncStatus = 'PENDING', updatedAt = :updatedAt WHERE sourceType = :sourceType AND sourceId = :sourceId AND isDeleted = 0")
     suspend fun softDeleteBySource(sourceType: String, sourceId: String, updatedAt: Long = System.currentTimeMillis())
 

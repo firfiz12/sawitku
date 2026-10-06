@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
+
+// Baca local.properties di luar block android{} agar bisa menggunakan java.util.Properties
+val localPropsFile = rootProject.file("local.properties")
+val localProps = Properties()
+if (localPropsFile.exists()) {
+    localProps.load(localPropsFile.inputStream())
+}
+val supabaseUrl: String = localProps.getProperty("SUPABASE_URL") ?: ""
+val supabaseAnonKey: String = localProps.getProperty("SUPABASE_ANON_KEY") ?: ""
 
 android {
     namespace = "com.sawitku.app"
@@ -19,6 +32,10 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Supabase config — di-inject dari local.properties (tidak di-commit ke git)
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     buildTypes {
@@ -39,13 +56,13 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
-    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/versions/9/previous-compilation-data.bin"
         }
     }
 }
@@ -76,6 +93,19 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Supabase
+    val supabaseVersion = "3.0.2"
+    implementation(platform("io.github.jan-tennert.supabase:bom:$supabaseVersion"))
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.ktor:ktor-client-okhttp:2.3.12")
+
+    // Serialization (diperlukan Supabase)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.5.0")

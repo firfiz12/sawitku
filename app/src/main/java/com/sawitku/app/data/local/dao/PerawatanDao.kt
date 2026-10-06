@@ -23,6 +23,9 @@ interface PerawatanDao {
     @Query("SELECT * FROM perawatan WHERE id = :id AND isDeleted = 0")
     suspend fun getById(id: String): PerawatanEntity?
 
+    @Query("SELECT * FROM perawatan WHERE id = :id")
+    suspend fun getByIdIncludingDeleted(id: String): PerawatanEntity?
+
     @Query("SELECT * FROM perawatan WHERE syncStatus != 'SYNCED'")
     suspend fun getPendingSync(): List<PerawatanEntity>
 

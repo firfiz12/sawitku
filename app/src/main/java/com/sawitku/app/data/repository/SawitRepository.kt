@@ -9,36 +9,48 @@ import kotlinx.coroutines.flow.Flow
 
 class SawitRepository(private val db: SawitDatabase) {
 
-    // Kebun
+    // ========== Kebun ==========
+
     fun getAllKebun(): Flow<List<KebunEntity>> = db.kebunDao().getAll()
     suspend fun getAllKebunOnce(): List<KebunEntity> = db.kebunDao().getAllOnce()
     suspend fun getKebunById(id: String): KebunEntity? = db.kebunDao().getById(id)
+    suspend fun getKebunByIdIncludingDeleted(id: String): KebunEntity? = db.kebunDao().getByIdIncludingDeleted(id)
     suspend fun insertKebun(kebun: KebunEntity) = db.kebunDao().insert(kebun)
     suspend fun updateKebun(kebun: KebunEntity) = db.kebunDao().update(kebun)
     suspend fun deleteKebun(kebun: KebunEntity) = db.kebunDao().softDelete(kebun.id)
+    suspend fun getPendingSyncKebun(): List<KebunEntity> = db.kebunDao().getPendingSync()
 
-    // Perawatan
+    // ========== Perawatan ==========
+
     fun getAllPerawatan(): Flow<List<PerawatanEntity>> = db.perawatanDao().getAll()
     suspend fun getAllPerawatanOnce(): List<PerawatanEntity> = db.perawatanDao().getAllOnce()
     fun getPerawatanByKebun(kebunId: String): Flow<List<PerawatanEntity>> = db.perawatanDao().getByKebun(kebunId)
+    suspend fun getPerawatanByIdIncludingDeleted(id: String): PerawatanEntity? = db.perawatanDao().getByIdIncludingDeleted(id)
     suspend fun insertPerawatan(perawatan: PerawatanEntity) = db.perawatanDao().insert(perawatan)
     suspend fun updatePerawatan(perawatan: PerawatanEntity) = db.perawatanDao().update(perawatan)
     suspend fun deletePerawatan(perawatan: PerawatanEntity) = db.perawatanDao().softDelete(perawatan.id)
+    suspend fun getPendingSyncPerawatan(): List<PerawatanEntity> = db.perawatanDao().getPendingSync()
 
-    // Panen
+    // ========== Panen ==========
+
     fun getAllPanen(): Flow<List<PanenEntity>> = db.panenDao().getAll()
     suspend fun getAllPanenOnce(): List<PanenEntity> = db.panenDao().getAllOnce()
     fun getPanenByKebun(kebunId: String): Flow<List<PanenEntity>> = db.panenDao().getByKebun(kebunId)
+    suspend fun getPanenByIdIncludingDeleted(id: String): PanenEntity? = db.panenDao().getByIdIncludingDeleted(id)
     suspend fun insertPanen(panen: PanenEntity) = db.panenDao().insert(panen)
     suspend fun updatePanen(panen: PanenEntity) = db.panenDao().update(panen)
     suspend fun deletePanen(panen: PanenEntity) = db.panenDao().softDelete(panen.id)
+    suspend fun getPendingSyncPanen(): List<PanenEntity> = db.panenDao().getPendingSync()
 
-    // Biaya
+    // ========== Biaya ==========
+
     fun getAllBiaya(): Flow<List<BiayaEntity>> = db.biayaDao().getAll()
     suspend fun getAllBiayaOnce(): List<BiayaEntity> = db.biayaDao().getAllOnce()
     suspend fun getBiayaBySource(sourceType: String, sourceId: String): BiayaEntity? = db.biayaDao().getBySource(sourceType, sourceId)
+    suspend fun getBiayaByIdIncludingDeleted(id: String): BiayaEntity? = db.biayaDao().getByIdIncludingDeleted(id)
     suspend fun deleteBiayaBySource(sourceType: String, sourceId: String) = db.biayaDao().softDeleteBySource(sourceType, sourceId)
     suspend fun insertBiaya(biaya: BiayaEntity) = db.biayaDao().insert(biaya)
     suspend fun updateBiaya(biaya: BiayaEntity) = db.biayaDao().update(biaya)
     suspend fun deleteBiaya(biaya: BiayaEntity) = db.biayaDao().softDelete(biaya.id)
+    suspend fun getPendingSyncBiaya(): List<BiayaEntity> = db.biayaDao().getPendingSync()
 }

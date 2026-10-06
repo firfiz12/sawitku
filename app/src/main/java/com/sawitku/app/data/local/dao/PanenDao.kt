@@ -23,6 +23,9 @@ interface PanenDao {
     @Query("SELECT * FROM panen WHERE id = :id AND isDeleted = 0")
     suspend fun getById(id: String): PanenEntity?
 
+    @Query("SELECT * FROM panen WHERE id = :id")
+    suspend fun getByIdIncludingDeleted(id: String): PanenEntity?
+
     @Query("SELECT * FROM panen WHERE syncStatus != 'SYNCED'")
     suspend fun getPendingSync(): List<PanenEntity>
 
