@@ -51,7 +51,9 @@ export default defineConfig({
       },
       workbox: {
         // Cache semua asset statik
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}', 'data/wilayah.json'],
+        // data/wilayah.json ~2.9MB lebih besar dari default 2MiB
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Strategi cache: Network First untuk API, Cache First untuk asset
         runtimeCaching: [
           {

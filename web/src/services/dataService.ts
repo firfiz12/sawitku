@@ -416,6 +416,11 @@ export const dataService = {
                 jumlah_pohon: Number(row.jumlah_pohon || 0),
                 varietas: (meta.varietas as string) || 'Tenera DxP',
                 rotasi_panen_hari: Number(row.rotasi_panen_hari || 14),
+                adm4_code: (meta.adm4_code as string) || undefined,
+                nama_desa: (meta.nama_desa as string) || undefined,
+                nama_kecamatan: (meta.nama_kecamatan as string) || undefined,
+                nama_kabupaten: (meta.nama_kabupaten as string) || undefined,
+                nama_provinsi: (meta.nama_provinsi as string) || undefined,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
               };
@@ -461,6 +466,11 @@ export const dataService = {
             lokasi: item.lokasi,
             varietas: item.varietas,
             tahun_tanam: item.tahun_tanam,
+            adm4_code: item.adm4_code,
+            nama_desa: item.nama_desa,
+            nama_kecamatan: item.nama_kecamatan,
+            nama_kabupaten: item.nama_kabupaten,
+            nama_provinsi: item.nama_provinsi,
           }),
           is_deleted: false,
           updated_at: new Date().toISOString(),
@@ -922,29 +932,30 @@ export const dataService = {
     kebunList: Kebun[],
     panenList: Panen[],
     perawatanList: Perawatan[],
-    pengeluaranLainList: PengeluaranLain[]
+    pengeluaranLainList: PengeluaranLain[],
+    yearMonth?: string // YYYY-MM; kosong = bulan berjalan
   ): DashboardStats {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    const isThisMonth = (dateStr: string) => {
+    const isSelectedMonth = (dateStr: string) => {
       if (!dateStr) return false;
+      // Filter bulan eksplisit (dipilih di dashboard) menang;
+      // kalau kosong, hitung bulan berjalan seperti dulu.
+      if (yearMonth) return dateStr.startsWith(yearMonth);
       const d = new Date(dateStr);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     };
 
     const totalKebun = kebunList.length;
     const totalLuasHa = kebunList.reduce((acc, k) => acc + (Number(k.luas_hektar) || 0), 0);
 
-    const panenBulanIni = panenList.filter((p) => isThisMonth(p.tanggal));
+    const panenBulanIni = panenList.filter((p) => isSelectedMonth(p.tanggal));
     const totalProduksiBulanIniKg = panenBulanIni.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
     const totalPendapatanBulanIni = panenBulanIni.reduce((acc, p) => acc + (Number(p.total_pendapatan) || 0), 0);
 
-    const perawatanBulanIni = perawatanList.filter((p) => isThisMonth(p.tanggal));
+    const perawatanBulanIni = perawatanList.filter((p) => isSelectedMonth(p.tanggal));
     const biayaPerawatanBulanIni = perawatanBulanIni.reduce((acc, p) => acc + (Number(p.total_biaya) || 0), 0);
 
-    const pengeluaranLainBulanIni = pengeluaranLainList.filter((p) => isThisMonth(p.tanggal));
+    const pengeluaranLainBulanIni = pengeluaranLainList.filter((p) => isSelectedMonth(p.tanggal));
     const biayaLainBulanIni = pengeluaranLainBulanIni.reduce((acc, p) => acc + (Number(p.jumlah) || 0), 0);
 
     const totalPengeluaranBulanIni = biayaPerawatanBulanIni + biayaLainBulanIni;

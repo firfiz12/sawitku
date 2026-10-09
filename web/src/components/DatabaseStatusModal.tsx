@@ -68,7 +68,7 @@ export const DatabaseStatusModal: React.FC<DatabaseStatusModalProps> = ({
               <Database size={22} color={status.isConnected ? '#059669' : '#dc2626'} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              <h2 className="h3-card-title" style={{ color: '#0f172a', margin: 0 }}>
                 Status Koneksi Database
               </h2>
               <span style={{ fontSize: '0.8rem', color: '#64748b' }}>

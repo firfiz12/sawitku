@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import type { Perawatan, Kebun } from '../types';
+import { MonthFilter } from '../components/MonthFilter';
 
 interface PerawatanViewProps {
   perawatanList: Perawatan[];
@@ -31,6 +32,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
 }) => {
   const [filterKebun, setFilterKebun] = useState<string>('all');
   const [filterJenis, setFilterJenis] = useState<string>('all');
+  const [filterMonth, setFilterMonth] = useState<string>(''); // YYYY-MM
   const [editingPerawatan, setEditingPerawatan] = useState<Perawatan | null>(null);
 
   // Form State
@@ -88,6 +90,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
   const filteredPerawatan = perawatanList.filter((p) => {
     if (filterKebun !== 'all' && p.kebun_id !== filterKebun) return false;
     if (filterJenis !== 'all' && p.jenis_perawatan !== filterJenis) return false;
+    if (filterMonth && !p.tanggal.startsWith(filterMonth)) return false;
     return true;
   });
 
@@ -149,8 +152,8 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
             <Wrench size={22} color="#06b6d4" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Aktivitas Perawatan</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>
+            <div className="stat-label" style={{ color: '#94a3b8' }}>Total Aktivitas Perawatan</div>
+            <div className="num-stat" style={{ color: '#fff' }}>
               {filteredPerawatan.length} <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>Aktivitas</span>
             </div>
           </div>
@@ -161,8 +164,8 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
             <DollarSign size={22} color="#ef4444" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Biaya Perawatan</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f87171' }}>
+            <div className="stat-label" style={{ color: '#94a3b8' }}>Total Biaya Perawatan</div>
+            <div className="num-stat" style={{ color: '#f87171' }}>
               {formatRupiah(totalBiayaFiltered)}
             </div>
           </div>
@@ -203,13 +206,20 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
             ))}
           </select>
 
-          {(filterKebun !== 'all' || filterJenis !== 'all') && (
+          <MonthFilter
+            id="filter-month-perawatan"
+            value={filterMonth}
+            onChange={setFilterMonth}
+          />
+
+          {(filterKebun !== 'all' || filterJenis !== 'all' || filterMonth !== '') && (
             <button
               className="btn btn-secondary"
               style={{ padding: '6px 12px', fontSize: '0.8rem' }}
               onClick={() => {
                 setFilterKebun('all');
                 setFilterJenis('all');
+                setFilterMonth('');
               }}
             >
               Reset
@@ -422,7 +432,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                 }}
               >
                 <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Total Pengeluaran Perawatan:</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f87171' }}>
+                <span className="num-modal" style={{ color: '#f87171' }}>
                   {formatRupiah(calculatedTotal)}
                 </span>
               </div>

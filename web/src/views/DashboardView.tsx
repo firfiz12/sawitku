@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
+  Filter,
 } from 'lucide-react';
 import type {
   Kebun,
@@ -17,9 +18,12 @@ import type {
   DashboardStats,
 } from '../types';
 import type { NavTab } from '../components/Sidebar';
+import { MonthFilter } from '../components/MonthFilter';
 
 interface DashboardViewProps {
   stats: DashboardStats;
+  dashboardMonth: string; // YYYY-MM, kosong = bulan berjalan
+  onDashboardMonthChange: (ym: string) => void;
   pengingatList: PengingatPanenInfo[];
   recentPanen: Panen[];
   kebunList: Kebun[];
@@ -32,6 +36,8 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   stats,
+  dashboardMonth,
+  onDashboardMonthChange,
   pengingatList,
   recentPanen,
   kebunList,
@@ -53,6 +59,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const k = kebunList.find((item) => item.id === id);
     return k ? k.nama : 'Kebun';
   };
+
+  const monthLabel = dashboardMonth
+    ? (() => {
+        const [y, m] = dashboardMonth.split('-').map(Number);
+        const names = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        return `${names[(m || 1) - 1]} ${y}`;
+      })()
+    : 'Bulan Ini';
 
   const overdueList = pengingatList.filter(
     (p) => p.status === 'LEWAT_JADWAL' || p.status === 'HARI_INI'
@@ -98,6 +112,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
+      {/* Filter Bulan Analitik */}
+      <div className="card filter-bar" style={{ padding: '14px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <Filter size={16} color="#94a3b8" />
+          <span style={{ fontSize: '0.88rem', color: '#64748b', fontWeight: 600 }}>Periode Analitik:</span>
+          <MonthFilter id="filter-month-dashboard" value={dashboardMonth} onChange={onDashboardMonthChange} />
+        </div>
+        <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600 }}>
+          Menampilkan <strong style={{ color: '#0f172a' }}>{monthLabel}</strong>
+        </span>
+      </div>
+
       {/* KPI Cards Grid */}
       <div className="stat-grid">
         <div className="card stat-card">
@@ -116,7 +142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="stat-icon" style={{ background: 'rgba(217, 119, 6, 0.12)' }}>
             <Sprout size={22} color="#d97706" />
           </div>
-          <div className="stat-label">Produksi Bulan Ini</div>
+          <div className="stat-label">Produksi {monthLabel}</div>
           <div className="stat-value">
             {stats.totalProduksiBulanIniKg.toLocaleString('id-ID')} <span style={{ fontSize: '1rem', color: '#64748b' }}>Kg</span>
           </div>
@@ -130,7 +156,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.12)' }}>
             <ArrowUpRight size={22} color="#059669" />
           </div>
-          <div className="stat-label">Pendapatan Bulan Ini</div>
+          <div className="stat-label">Pendapatan {monthLabel}</div>
           <div className="stat-value" style={{ color: '#047857' }}>
             {formatRupiah(stats.totalPendapatanBulanIni)}
           </div>
@@ -143,7 +169,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
             <ArrowDownRight size={22} color="#dc2626" />
           </div>
-          <div className="stat-label">Pengeluaran Bulan Ini</div>
+          <div className="stat-label">Pengeluaran {monthLabel}</div>
           <div className="stat-value" style={{ color: '#b91c1c' }}>
             {formatRupiah(stats.totalPengeluaranBulanIni)}
           </div>
@@ -172,7 +198,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       >
         <div>
           <div style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
-            Estimasi Laba Bersih Bulan Berjalan
+            Estimasi Laba Bersih {monthLabel}
           </div>
           <div className="laba-value" style={{ color: stats.labaBersihBulanIni >= 0 ? '#047857' : '#b91c1c' }}>
             {formatRupiah(stats.labaBersihBulanIni)}
@@ -196,7 +222,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Rotasi & Pengingat Panen</h3>
+              <h3 className="h3-card-title">Rotasi & Pengingat Panen</h3>
               <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Status kesiapan panen per blok kebun</p>
             </div>
             <button
@@ -272,7 +298,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Panen Terbaru</h3>
+              <h3 className="h3-card-title">Panen Terbaru</h3>
               <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Catatan penerimaan TBS kelapa sawit terkini</p>
             </div>
             <button
@@ -344,7 +370,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Aksi Cepat Bawah */}
       <div className="card">
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 14 }}>Aksi Cepat Pengelolaan</h3>
+        <h3 className="h3-card-title" style={{ marginBottom: 14 }}>Aksi Cepat Pengelolaan</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
           <button className="btn btn-secondary" style={{ padding: '14px', justifyContent: 'flex-start', background: '#f8fafc' }} onClick={() => onOpenPanenModal()}>
             <Sprout size={18} color="#059669" />

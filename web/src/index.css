@@ -413,6 +413,43 @@ h1, h2, h3, h4, h5, h6 {
   transition: all var(--transition-fast);
 }
 
+/* ===== Type Scale Utilitas (Responsif) =====
+   Dipakai menggantikan fontSize inline yang "keras" supaya ikut
+   mengecil secara proporsional pada layar sempit. */
+.num-stat {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: clamp(1.15rem, 4.5vw, 1.5rem);
+  line-height: 1.2;
+}
+
+.num-xl {
+  font-weight: 800;
+  font-size: clamp(1.2rem, 5vw, 1.45rem);
+  line-height: 1.2;
+}
+
+.num-modal {
+  font-weight: 800;
+  font-size: clamp(1.05rem, 3.5vw, 1.25rem);
+}
+
+.num-kebun-info {
+  font-weight: 800;
+  font-size: clamp(1rem, 3vw, 1.1rem);
+}
+
+.h3-card-title {
+  font-weight: 800;
+  font-size: clamp(1.05rem, 3vw, 1.2rem);
+}
+
+.h-kebun-name {
+  font-weight: 800;
+  font-size: clamp(1.05rem, 3.5vw, 1.25rem);
+  color: var(--text-main);
+}
+
 .card:hover {
   border-color: #cbd5e1;
   box-shadow: var(--shadow-md);
@@ -908,8 +945,12 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .stat-value {
-    font-size: 1.55rem;
+    font-size: clamp(1.2rem, 5vw, 1.45rem);
     line-height: 1.25;
+  }
+
+  .laba-value {
+    font-size: clamp(1.35rem, 6vw, 1.8rem);
   }
 
   .card {

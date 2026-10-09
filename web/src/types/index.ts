@@ -8,6 +8,12 @@ export interface Kebun {
   jumlah_pohon: number;
   varietas: string;
   rotasi_panen_hari: number;
+  // Lokasi cuaca (adm4 = kode wilayah BMKG, mis. 14.04.01.2001)
+  adm4_code?: string;
+  nama_desa?: string;
+  nama_kecamatan?: string;
+  nama_kabupaten?: string;
+  nama_provinsi?: string;
   created_at?: string;
   updated_at?: string;
 }

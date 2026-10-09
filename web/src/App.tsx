@@ -52,6 +52,8 @@ export const App: React.FC = () => {
   const [isPerawatanModalOpen, setIsPerawatanModalOpen] = useState(false);
   const [isPengeluaranLainModalOpen, setIsPengeluaranLainModalOpen] = useState(false);
   const [preselectedKebunId, setPreselectedKebunId] = useState<string | undefined>();
+  // Filter bulan untuk analitik dashboard ('YYYY-MM'; kosong = bulan berjalan)
+  const [dashboardMonth, setDashboardMonth] = useState<string>('');
 
   // Fetch initial data
   const loadAllData = async () => {
@@ -116,8 +118,14 @@ export const App: React.FC = () => {
 
   // Computed: Stats
   const stats = useMemo(() => {
-    return dataService.calculateStats(kebunList, panenList, perawatanList, pengeluaranLainList);
-  }, [kebunList, panenList, perawatanList, pengeluaranLainList]);
+    return dataService.calculateStats(
+      kebunList,
+      panenList,
+      perawatanList,
+      pengeluaranLainList,
+      dashboardMonth || undefined
+    );
+  }, [kebunList, panenList, perawatanList, pengeluaranLainList, dashboardMonth]);
 
   const overdueHarvestCount = pengingatList.filter(
     (p) => p.status === 'LEWAT_JADWAL' || p.status === 'HARI_INI'
@@ -232,6 +240,8 @@ export const App: React.FC = () => {
           {currentTab === 'dashboard' && (
             <DashboardView
               stats={stats}
+              dashboardMonth={dashboardMonth}
+              onDashboardMonthChange={setDashboardMonth}
               pengingatList={pengingatList}
               recentPanen={panenList}
               kebunList={kebunList}

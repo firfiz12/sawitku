@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import type { PengeluaranLain } from '../types';
+import { MonthFilter } from '../components/MonthFilter';
 
 interface PengeluaranLainViewProps {
   pengeluaranList: PengeluaranLain[];
@@ -119,8 +120,8 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             <Receipt size={22} color="#d97706" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Transaksi Pengeluaran Lain</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
+            <div className="stat-label" style={{ color: '#64748b' }}>Total Transaksi Pengeluaran Lain</div>
+            <div className="num-stat" style={{ color: '#0f172a' }}>
               {filteredList.length} <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Item</span>
             </div>
           </div>
@@ -131,8 +132,8 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             <DollarSign size={22} color="#dc2626" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Nominal Pengeluaran</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#dc2626' }}>
+            <div className="stat-label" style={{ color: '#64748b' }}>Total Nominal Pengeluaran</div>
+            <div className="num-stat" style={{ color: '#dc2626' }}>
               {formatRupiah(totalFiltered)}
             </div>
           </div>
@@ -160,14 +161,10 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             ))}
           </select>
 
-          <input
+          <MonthFilter
             id="filter-month-pengeluaran"
-            type="month"
-            className="form-input filter-control"
-            style={{ width: 'auto' }}
             value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
-            title="Filter Bulan"
+            onChange={setFilterMonth}
           />
 
           {(filterKategori !== 'all' || filterMonth !== '') && (

@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import type { Panen, Kebun } from '../types';
+import { MonthFilter } from '../components/MonthFilter';
 
 interface PanenViewProps {
   panenList: Panen[];
@@ -138,8 +139,8 @@ export const PanenView: React.FC<PanenViewProps> = ({
             <Weight size={22} color="#10b981" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Berat Panen</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
+            <div className="stat-label" style={{ color: '#64748b' }}>Total Berat Panen</div>
+            <div className="num-stat" style={{ color: '#0f172a' }}>
               {totalBeratFiltered.toLocaleString('id-ID')} <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Kg</span>
             </div>
           </div>
@@ -150,8 +151,8 @@ export const PanenView: React.FC<PanenViewProps> = ({
             <Coins size={22} color="#d97706" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Nilai Penjualan</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#059669' }}>
+            <div className="stat-label" style={{ color: '#64748b' }}>Total Nilai Penjualan</div>
+            <div className="num-stat" style={{ color: '#059669' }}>
               {formatRupiah(totalPendapatanFiltered)}
             </div>
           </div>
@@ -179,14 +180,10 @@ export const PanenView: React.FC<PanenViewProps> = ({
             ))}
           </select>
 
-          <input
+          <MonthFilter
             id="filter-month-panen"
-            type="month"
-            className="form-input filter-control"
-            style={{ width: 'auto' }}
             value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
-            title="Filter Bulan"
+            onChange={setFilterMonth}
           />
 
           {(filterKebun !== 'all' || filterMonth !== '') && (
@@ -381,7 +378,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
                 }}
               >
                 <span style={{ fontSize: '0.85rem', color: '#047857', fontWeight: 600 }}>Total Estimasi Pendapatan:</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#047857' }}>
+                <span className="num-modal" style={{ color: '#047857' }}>
                   {formatRupiah(calculatedTotal)}
                 </span>
               </div>

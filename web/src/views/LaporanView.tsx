@@ -7,6 +7,7 @@ import {
   ArrowDownRight,
 } from 'lucide-react';
 import type { Kebun, Panen, Perawatan, PengeluaranLain } from '../types';
+import { MonthFilter } from '../components/MonthFilter';
 
 interface LaporanViewProps {
   kebunList: Kebun[];
@@ -22,6 +23,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   pengeluaranLainList,
 }) => {
   const [periodFilter, setPeriodFilter] = useState<'thisMonth' | 'last3Months' | 'thisYear' | 'all'>('thisYear');
+  const [selectedYearMonth, setSelectedYearMonth] = useState<string>(''); // YYYY-MM, lebih spesifik dari pill periode
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -29,6 +31,8 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
   const isIncludedInPeriod = (dateStr: string) => {
     if (!dateStr) return false;
+    // Bulan eksplisit menang atas pill periode
+    if (selectedYearMonth) return dateStr.startsWith(selectedYearMonth);
     const d = new Date(dateStr);
     if (periodFilter === 'all') return true;
     if (periodFilter === 'thisYear') return d.getFullYear() === currentYear;
@@ -155,13 +159,28 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           ).map((btn) => (
             <button
               key={btn.id}
-              className={`btn ${periodFilter === btn.id ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn ${periodFilter === btn.id && !selectedYearMonth ? 'btn-primary' : 'btn-secondary'}`}
               style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-              onClick={() => setPeriodFilter(btn.id)}
+              onClick={() => {
+                setPeriodFilter(btn.id);
+                // Saat memilih pill, bulan eksplisit dikosongkan supaya pill berlaku
+                if (btn.id === 'thisMonth') {
+                  setSelectedYearMonth(new Date().toISOString().slice(0, 7));
+                } else {
+                  setSelectedYearMonth('');
+                }
+              }}
             >
               {btn.label}
             </button>
           ))}
+
+          <MonthFilter
+            id="filter-month-laporan"
+            value={selectedYearMonth}
+            onChange={setSelectedYearMonth}
+            showConvenience={false}
+          />
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
@@ -224,7 +243,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 style={{ fontSize: '1.15rem' }}>Tren Produksi TBS (6 Bulan Terakhir)</h3>
+              <h3 className="h3-card-title">Tren Produksi TBS (6 Bulan Terakhir)</h3>
               <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Volume panen dalam satuan Kilogram (Kg)</p>
             </div>
           </div>
@@ -232,6 +251,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           <div style={{ padding: '16px 0', height: 240, display: 'flex', alignItems: 'flex-end', gap: 14 }}>
             {monthlyData.map((m) => {
               const heightPercent = maxTbs > 0 ? Math.max((m.tbsKg / maxTbs) * 100, 6) : 6;
+              const isSelected = selectedYearMonth === m.yearMonth;
               return (
                 <div
                   key={m.yearMonth}
@@ -252,12 +272,14 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                       width: '100%',
                       maxWidth: 38,
                       height: `${heightPercent}%`,
-                      background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                      background: isSelected
+                        ? 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)'
+                        : 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
                       borderRadius: '6px 6px 0 0',
-                      boxShadow: '0 0 10px rgba(16, 185, 129, 0.25)',
+                      boxShadow: isSelected ? '0 0 10px rgba(217, 119, 6, 0.35)' : '0 0 10px rgba(16, 185, 129, 0.25)',
                       transition: 'height 0.4s ease',
                     }}
-                    title={`${m.label}: ${m.tbsKg.toLocaleString('id-ID')} Kg`}
+                    title={`${m.label}: ${m.tbsKg.toLocaleString('id-ID')} Kg${isSelected ? ' (bulan terpilih)' : ''}`}
                   />
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 10, fontWeight: 700 }}>
                     {m.label}
@@ -272,7 +294,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Rincian Alokasi Biaya</h3>
+              <h3 className="h3-card-title">Rincian Alokasi Biaya</h3>
               <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Proporsi pengeluaran perawatan dan operasional</p>
             </div>
           </div>
@@ -322,7 +344,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
               <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
                 Rata-rata Harga Jual TBS Periode Ini:
               </div>
-              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+              <div className="num-xl" style={{ color: '#0f172a', marginTop: 4 }}>
                 Rp {totalBeratTBS > 0 ? Math.round(totalPendapatan / totalBeratTBS).toLocaleString('id-ID') : 0}{' '}
                 <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>/ Kg TBS</span>
               </div>
@@ -335,7 +357,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Analisis Produktivitas per Blok Kebun (Yield Kg/Ha)</h3>
+            <h3 className="h3-card-title">Analisis Produktivitas per Blok Kebun (Yield Kg/Ha)</h3>
             <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Kinerja hasil panen dan pendapatan setiap blok lahan</p>
           </div>
         </div>

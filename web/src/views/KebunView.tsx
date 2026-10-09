@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Trees,
   Plus,
@@ -8,8 +8,18 @@ import {
   Trash2,
   Sprout,
   X,
+  Cloud,
 } from 'lucide-react';
 import type { Kebun } from '../types';
+import { WeatherWidget } from '../components/WeatherWidget';
+import {
+  getProvinsi,
+  getKabupaten,
+  getKecamatan,
+  getDesa,
+  getWilayahError,
+  type WilayahItem,
+} from '../services/wilayahService';
 
 interface KebunViewProps {
   kebunList: Kebun[];
@@ -41,6 +51,116 @@ export const KebunView: React.FC<KebunViewProps> = ({
   const [jumlahPohon, setJumlahPohon] = useState('');
   const [varietas, setVarietas] = useState('Tenera');
   const [rotasiPanenHari, setRotasiPanenHari] = useState('14');
+
+  // Lokasi cuaca (tree wilayah BMKG)
+  const [provCode, setProvCode] = useState('');
+  const [kabCode, setKabCode] = useState('');
+  const [kecCode, setKecCode] = useState('');
+  const [desaCode, setDesaCode] = useState('');
+  const [provinceList, setProvinceList] = useState<WilayahItem[]>([]);
+  const [regencyList, setRegencyList] = useState<WilayahItem[]>([]);
+  const [districtList, setDistrictList] = useState<WilayahItem[]>([]);
+  const [villageList, setVillageList] = useState<WilayahItem[]>([]);
+  const [wilayahLoading, setWilayahLoading] = useState(false);
+  const [wilayahError, setWilayahError] = useState('');
+  const loadStamp = useRef(0);
+
+  const resetLocationState = () => {
+    loadStamp.current++;
+    setProvCode('');
+    setKabCode('');
+    setKecCode('');
+    setDesaCode('');
+    setRegencyList([]);
+    setDistrictList([]);
+    setVillageList([]);
+    setWilayahError('');
+  };
+
+  // Muat daftar provinsi saat modal dibuka
+  useEffect(() => {
+    if (!isModalOpen) {
+      resetLocationState();
+      return;
+    }
+    let alive = true;
+    setWilayahLoading(true);
+    getProvinsi().then((list) => {
+      if (!alive) return;
+      setProvinceList(list);
+      setWilayahLoading(false);
+      setWilayahError(getWilayahError() || '');
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isModalOpen]);
+
+  const handleProvChange = (code: string) => {
+    const stamp = ++loadStamp.current;
+    setProvCode(code);
+    setKabCode('');
+    setKecCode('');
+    setDesaCode('');
+    setRegencyList([]);
+    setDistrictList([]);
+    setVillageList([]);
+    if (!code) return;
+    getKabupaten(code).then((list) => {
+      if (stamp === loadStamp.current) setRegencyList(list);
+    });
+  };
+
+  const handleKabChange = (code: string) => {
+    const stamp = ++loadStamp.current;
+    setKabCode(code);
+    setKecCode('');
+    setDesaCode('');
+    setDistrictList([]);
+    setVillageList([]);
+    if (!code) return;
+    getKecamatan(code).then((list) => {
+      if (stamp === loadStamp.current) setDistrictList(list);
+    });
+  };
+
+  const handleKecChange = (code: string) => {
+    const stamp = ++loadStamp.current;
+    setKecCode(code);
+    setDesaCode('');
+    setVillageList([]);
+    if (!code) return;
+    getDesa(code).then((list) => {
+      if (stamp === loadStamp.current) setVillageList(list);
+    });
+  };
+
+  const setupLocationFromKebun = (kebun: Kebun) => {
+    const parts = (kebun.adm4_code || '').split('.');
+    const prov = parts[0] || '';
+    const kab = parts.slice(0, 2).join('.');
+    const kec = parts.slice(0, 3).join('.');
+    const desa = parts.join('.');
+    const stamp = ++loadStamp.current;
+    setProvCode(prov);
+    setKabCode(kab);
+    setKecCode(kec);
+    setDesaCode(desa);
+    setRegencyList([]);
+    setDistrictList([]);
+    setVillageList([]);
+    if (!prov) return;
+    Promise.all([
+      getKabupaten(prov),
+      kab ? getKecamatan(kab) : Promise.resolve([]),
+      kec ? getDesa(kec) : Promise.resolve([]),
+    ]).then(([kabs, kecs, desas]) => {
+      if (stamp !== loadStamp.current) return;
+      setRegencyList(kabs);
+      setDistrictList(kecs);
+      setVillageList(desas);
+    });
+  };
 
   // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
   // reset form ke keadaan default untuk mode tambah.
@@ -75,6 +195,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
     setJumlahPohon('');
     setVarietas('Tenera');
     setRotasiPanenHari('14');
+    resetLocationState();
     onOpenModal();
   };
 
@@ -87,6 +208,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
     setJumlahPohon(kebun.jumlah_pohon.toString());
     setVarietas(kebun.varietas);
     setRotasiPanenHari((kebun.rotasi_panen_hari || 14).toString());
+    setupLocationFromKebun(kebun);
     onOpenModal();
   };
 
@@ -103,6 +225,11 @@ export const KebunView: React.FC<KebunViewProps> = ({
       jumlah_pohon: parseInt(jumlahPohon, 10) || 0,
       varietas,
       rotasi_panen_hari: parseInt(rotasiPanenHari, 10) || 14,
+      adm4_code: desaCode || undefined,
+      nama_provinsi: provinceList.find((x) => x.k === provCode)?.n,
+      nama_kabupaten: regencyList.find((x) => x.k === kabCode)?.n,
+      nama_kecamatan: districtList.find((x) => x.k === kecCode)?.n,
+      nama_desa: villageList.find((x) => x.k === desaCode)?.n,
     });
     closeModal();
   };
@@ -149,7 +276,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
             <div key={kebun.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="card-header" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>{kebun.nama}</h3>
+                  <h3 className="h-kebun-name">{kebun.nama}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: '0.82rem', marginTop: 4 }}>
                     <MapPin size={14} color="#059669" />
                     <span>{kebun.lokasi || 'Lokasi belum ditentukan'}</span>
@@ -194,11 +321,11 @@ export const KebunView: React.FC<KebunViewProps> = ({
               >
                 <div>
                   <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem', fontWeight: 600 }}>Luas Lahan</span>
-                  <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>{kebun.luas_hektar} Ha</span>
+                  <span className="num-kebun-info" style={{ color: '#0f172a' }}>{kebun.luas_hektar} Ha</span>
                 </div>
                 <div>
                   <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem', fontWeight: 600 }}>Populasi Pohon</span>
-                  <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>
+                  <span className="num-kebun-info" style={{ color: '#0f172a' }}>
                     {kebun.jumlah_pohon > 0 ? `${kebun.jumlah_pohon} Pokok` : '-'}
                   </span>
                 </div>
@@ -215,6 +342,8 @@ export const KebunView: React.FC<KebunViewProps> = ({
                   <span style={{ fontWeight: 700, color: '#1e293b' }}>{kebun.varietas || 'Tidak spesifik'}</span>
                 </div>
               </div>
+
+              {kebun.adm4_code && <WeatherWidget kebun={kebun} />}
 
               {/* Action Footer */}
               <div style={{ marginTop: 'auto', paddingTop: 8 }}>
@@ -297,6 +426,96 @@ export const KebunView: React.FC<KebunViewProps> = ({
                   value={lokasi}
                   onChange={(e) => setLokasi(e.target.value)}
                 />
+              </div>
+
+              <div
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '14px',
+                  background: '#f8fafc',
+                  marginTop: 4,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Cloud size={16} color="#059669" />
+                  <label className="form-label" style={{ marginBottom: 0 }}>Lokasi Prakiraan Cuaca (BMKG)</label>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0 0 12px' }}>
+                  Pilih provinsi sampai desa/kelurahan agar kartu kebun menampilkan prakiraan cuaca. Opsional.
+                </p>
+                {wilayahLoading ? (
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '8px 0' }}>Memuat data wilayah...</p>
+                ) : wilayahError ? (
+                  <p style={{ fontSize: '0.82rem', color: '#dc2626', margin: '8px 0' }}>
+                    {wilayahError}. Pastikan terhubung ke internet saat pertama kali, lalu muat ulang.
+                  </p>
+                ) : (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="form-prov-kebun">Provinsi</label>
+                      <select
+                        id="form-prov-kebun"
+                        className="form-input"
+                        value={provCode}
+                        onChange={(e) => handleProvChange(e.target.value)}
+                      >
+                        <option value="">— Pilih Provinsi —</option>
+                        {provinceList.map((p) => (
+                          <option key={p.k} value={p.k}>{p.n}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="form-kab-kebun">Kabupaten/Kota</label>
+                      <select
+                        id="form-kab-kebun"
+                        className="form-input"
+                        value={kabCode}
+                        onChange={(e) => handleKabChange(e.target.value)}
+                        disabled={!provCode || regencyList.length === 0}
+                      >
+                        <option value="">— Pilih Kab/Kota —</option>
+                        {regencyList.map((p) => (
+                          <option key={p.k} value={p.k}>{p.n}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="form-kec-kebun">Kecamatan</label>
+                      <select
+                        id="form-kec-kebun"
+                        className="form-input"
+                        value={kecCode}
+                        onChange={(e) => handleKecChange(e.target.value)}
+                        disabled={!kabCode || districtList.length === 0}
+                      >
+                        <option value="">— Pilih Kecamatan —</option>
+                        {districtList.map((p) => (
+                          <option key={p.k} value={p.k}>{p.n}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="form-desa-kebun">Desa/Kelurahan</label>
+                      <select
+                        id="form-desa-kebun"
+                        className="form-input"
+                        value={desaCode}
+                        onChange={(e) => setDesaCode(e.target.value)}
+                        disabled={!kecCode || villageList.length === 0}
+                      >
+                        <option value="">— Pilih Desa —</option>
+                        {villageList.map((p) => (
+                          <option key={p.k} value={p.k}>{p.n}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="form-row">
