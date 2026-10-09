@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Trees,
   Plus,
@@ -41,6 +41,24 @@ export const KebunView: React.FC<KebunViewProps> = ({
   const [jumlahPohon, setJumlahPohon] = useState('');
   const [varietas, setVarietas] = useState('Tenera');
   const [rotasiPanenHari, setRotasiPanenHari] = useState('14');
+
+  // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
+  // reset form ke keadaan default untuk mode tambah.
+  useEffect(() => {
+    if (!isModalOpen || editingKebun !== null) return;
+    setNama('');
+    setLuasHektar('');
+    setLokasi('');
+    setTahunTanam(new Date().getFullYear().toString());
+    setJumlahPohon('');
+    setVarietas('Tenera');
+    setRotasiPanenHari('14');
+  }, [isModalOpen, editingKebun]);
+
+  const closeModal = () => {
+    setEditingKebun(null);
+    onCloseModal();
+  };
 
   const filteredKebun = kebunList.filter(
     (k) =>
@@ -86,7 +104,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
       varietas,
       rotasi_panen_hari: parseInt(rotasiPanenHari, 10) || 14,
     });
-    onCloseModal();
+    closeModal();
   };
 
   return (
@@ -118,22 +136,22 @@ export const KebunView: React.FC<KebunViewProps> = ({
 
       {/* Grid Kebun */}
       {filteredKebun.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-          <Trees size={48} color="#274e36" style={{ margin: '0 auto 16px' }} />
-          <h3>Tidak ada kebun yang ditemukan</h3>
+        <div className="card" style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+          <Trees size={48} color="#059669" style={{ margin: '0 auto 16px' }} />
+          <h3 style={{ color: '#0f172a' }}>Tidak ada kebun yang ditemukan</h3>
           <p style={{ marginTop: 6, fontSize: '0.9rem' }}>
             {search ? 'Coba ubah kata kunci pencarian Anda.' : 'Mulai dengan menambahkan blok kebun sawit Anda.'}
           </p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20 }}>
           {filteredKebun.map((kebun) => (
             <div key={kebun.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="card-header" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', color: '#f0fdf4' }}>{kebun.nama}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: '0.82rem', marginTop: 4 }}>
-                    <MapPin size={14} color="#10b981" />
+                  <h3 style={{ fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>{kebun.nama}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: '0.82rem', marginTop: 4 }}>
+                    <MapPin size={14} color="#059669" />
                     <span>{kebun.lokasi || 'Lokasi belum ditentukan'}</span>
                   </div>
                 </div>
@@ -167,34 +185,34 @@ export const KebunView: React.FC<KebunViewProps> = ({
                   gridTemplateColumns: '1fr 1fr',
                   gap: 12,
                   padding: '14px',
-                  borderRadius: 10,
-                  background: 'rgba(0,0,0,0.2)',
-                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 12,
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
                   marginBottom: 16,
                   fontSize: '0.85rem',
                 }}
               >
                 <div>
-                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.75rem' }}>Luas Lahan</span>
-                  <span style={{ fontWeight: 700, color: '#fff', fontSize: '1.05rem' }}>{kebun.luas_hektar} Ha</span>
+                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem', fontWeight: 600 }}>Luas Lahan</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>{kebun.luas_hektar} Ha</span>
                 </div>
                 <div>
-                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.75rem' }}>Populasi Pohon</span>
-                  <span style={{ fontWeight: 700, color: '#fff', fontSize: '1.05rem' }}>
+                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem', fontWeight: 600 }}>Populasi Pohon</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>
                     {kebun.jumlah_pohon > 0 ? `${kebun.jumlah_pohon} Pokok` : '-'}
                   </span>
                 </div>
                 <div>
-                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.75rem' }}>Tahun Tanam</span>
-                  <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{kebun.tahun_tanam}</span>
+                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem', fontWeight: 600 }}>Tahun Tanam</span>
+                  <span style={{ fontWeight: 700, color: '#1e293b' }}>{kebun.tahun_tanam}</span>
                 </div>
                 <div>
-                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.75rem' }}>Rotasi Panen</span>
-                  <span style={{ fontWeight: 600, color: '#34d399' }}>Setiap {kebun.rotasi_panen_hari || 14} Hari</span>
+                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem', fontWeight: 600 }}>Rotasi Panen</span>
+                  <span style={{ fontWeight: 700, color: '#059669' }}>Setiap {kebun.rotasi_panen_hari || 14} Hari</span>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.75rem' }}>Varietas Benih</span>
-                  <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{kebun.varietas || 'Tidak spesifik'}</span>
+                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem', fontWeight: 600 }}>Varietas Benih</span>
+                  <span style={{ fontWeight: 700, color: '#1e293b' }}>{kebun.varietas || 'Tidak spesifik'}</span>
                 </div>
               </div>
 
@@ -216,11 +234,11 @@ export const KebunView: React.FC<KebunViewProps> = ({
 
       {/* Modal Tambah/Edit Kebun */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={onCloseModal}>
+        <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editingKebun ? 'Edit Kebun Sawit' : 'Tambah Kebun Sawit'}</h2>
-              <button className="modal-close-btn" onClick={onCloseModal}>
+              <button className="modal-close-btn" onClick={closeModal}>
                 <X size={20} />
               </button>
             </div>
@@ -322,7 +340,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
-                <button type="button" className="btn btn-secondary" onClick={onCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>
                   Batal
                 </button>
                 <button id="btn-submit-kebun" type="submit" className="btn btn-primary">

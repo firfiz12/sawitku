@@ -24,3 +24,10 @@ build/
 node_modules/
 .next/
 dist/
+*.zip
+
+# opencode working files
+.opencode/
+
+# PWA dev-only build output
+web/dev-dist/

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Menu, Bell, Sprout, Trees } from 'lucide-react';
+import { Menu, Bell, Sprout, Trees, Database } from 'lucide-react';
 import type { NavTab } from './Sidebar';
+import type { DatabaseStatus } from '../services/dataService';
 
 interface TopBarProps {
   currentTab: NavTab;
@@ -9,6 +10,8 @@ interface TopBarProps {
   onQuickAddPanen: () => void;
   onQuickAddKebun: () => void;
   onShowAlerts: () => void;
+  dbStatus: DatabaseStatus | null;
+  onOpenDbStatus: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -18,6 +21,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onQuickAddPanen,
   onQuickAddKebun,
   onShowAlerts,
+  dbStatus,
+  onOpenDbStatus,
 }) => {
   const titles: Record<NavTab, string> = {
     dashboard: 'Ringkasan & Dashboard',
@@ -39,13 +44,34 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <Menu size={22} />
         </button>
-        <h1 className="page-title">{titles[currentTab]}</h1>
+        <div className="page-title-wrap">
+          <h1 className="page-title">{titles[currentTab]}</h1>
+          <span className="page-subtitle">
+            <span>SawitKu</span>
+            <span>•</span>
+            <span style={{ color: '#059669', fontWeight: 600 }}>Sistem Manajemen Kelapa Sawit Modern</span>
+          </span>
+        </div>
       </div>
 
       <div className="top-bar-actions">
+        {/* Database Status Button */}
+        <button
+          id="btn-topbar-db"
+          onClick={onOpenDbStatus}
+          className={`btn-db-pill ${dbStatus?.isConnected ? 'online' : 'offline'}`}
+          title="Klik untuk detail koneksi Database Supabase"
+        >
+          <span className={`status-dot ${dbStatus?.isConnected ? 'online' : 'offline'}`} />
+          <Database size={14} />
+          <span className="hidden-mobile">
+            {dbStatus?.isConnected ? 'Supabase Online' : 'Lokal / Offline'}
+          </span>
+        </button>
+
         <button
           id="btn-quick-panen"
-          className="btn btn-primary"
+          className="btn btn-primary topbar-quick"
           style={{ padding: '8px 14px', fontSize: '0.85rem' }}
           onClick={onQuickAddPanen}
         >
@@ -55,7 +81,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <button
           id="btn-quick-kebun"
-          className="btn btn-secondary"
+          className="btn btn-secondary topbar-quick"
           style={{ padding: '8px 14px', fontSize: '0.85rem' }}
           onClick={onQuickAddKebun}
         >

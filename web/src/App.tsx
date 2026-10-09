@@ -3,13 +3,16 @@ import { Sidebar } from './components/Sidebar';
 import type { NavTab } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { AuthModal } from './components/AuthModal';
+import { PwaBanner } from './components/PwaBanner';
+import { DatabaseStatusModal } from './components/DatabaseStatusModal';
 import { DashboardView } from './views/DashboardView';
 import { KebunView } from './views/KebunView';
 import { PanenView } from './views/PanenView';
 import { PerawatanView } from './views/PerawatanView';
 import { PengeluaranLainView } from './views/PengeluaranLainView';
 import { LaporanView } from './views/LaporanView';
-import { dataService } from './services/dataService';
+import { dataService, setCurrentUser } from './services/dataService';
+import type { DatabaseStatus } from './services/dataService';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import type {
   Kebun,
@@ -23,12 +26,25 @@ export const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
+  const [isDbStatusModalOpen, setIsDbStatusModalOpen] = useState(false);
+
+  // Check Database status
+  const refreshDbStatus = async () => {
+    try {
+      const status = await dataService.checkDatabaseStatus();
+      setDbStatus(status);
+    } catch (e) {
+      console.error('Failed to check database status:', e);
+    }
+  };
 
   // Data States
   const [kebunList, setKebunList] = useState<Kebun[]>([]);
   const [panenList, setPanenList] = useState<Panen[]>([]);
   const [perawatanList, setPerawatanList] = useState<Perawatan[]>([]);
   const [pengeluaranLainList, setPengeluaranLainList] = useState<PengeluaranLain[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Modal States
   const [isKebunModalOpen, setIsKebunModalOpen] = useState(false);
@@ -40,6 +56,9 @@ export const App: React.FC = () => {
   // Fetch initial data
   const loadAllData = async () => {
     try {
+      // Retry antrian sinkronisasi yang tertunda terlebih dahulu
+      await dataService.flushPendingSync();
+
       const [k, p, pw, pl] = await Promise.all([
         dataService.getKebun(),
         dataService.getPanen(),
@@ -56,23 +75,39 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    loadAllData();
+    if (!isSupabaseConfigured) return;
 
-    if (isSupabaseConfigured) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setUserEmail(session?.user?.email || null);
-      });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email || null);
+      setUserId(session?.user?.id || null);
+    });
 
-      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUserEmail(session?.user?.email || null);
-        loadAllData();
-      });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email || null);
+      setUserId(session?.user?.id || null);
+    });
 
-      return () => {
-        authListener.subscription.unsubscribe();
-      };
-    }
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
+
+  // Isolasi storage per-akun & muat data setiap sesi berubah
+  useEffect(() => {
+    setCurrentUser(userId);
+    loadAllData();
+    refreshDbStatus();
+
+    // Koneksi kembali online → kirim semua perubahan yang tertunda lalu muat ulang
+    const handleOnline = () => {
+      dataService.flushPendingSync().then(() => {
+        loadAllData();
+        refreshDbStatus();
+      });
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [userId]);
 
   // Computed: Pengingat Panen Info
   const pengingatList = useMemo(() => {
@@ -132,10 +167,27 @@ export const App: React.FC = () => {
     await loadAllData();
   };
 
-  // Shortcuts
+  // Shortcuts (untuk tombol aksi cepat dari tab lain, pindah dulu ke tab terkait
+  // karena modal dirender di dalam masing-masing view)
   const handleOpenPanenModal = (kebunId?: string) => {
     setPreselectedKebunId(kebunId);
+    setCurrentTab('panen');
     setIsPanenModalOpen(true);
+  };
+
+  const handleOpenKebunModal = () => {
+    setCurrentTab('kebun');
+    setIsKebunModalOpen(true);
+  };
+
+  const handleOpenPerawatanModal = () => {
+    setCurrentTab('perawatan');
+    setIsPerawatanModalOpen(true);
+  };
+
+  const handleOpenPengeluaranLainModal = () => {
+    setCurrentTab('pengeluaran-lain');
+    setIsPengeluaranLainModalOpen(true);
   };
 
   const handleLogout = async () => {
@@ -143,6 +195,7 @@ export const App: React.FC = () => {
       await supabase.auth.signOut();
     }
     setUserEmail(null);
+    setUserId(null);
   };
 
   return (
@@ -157,17 +210,22 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
+        dbStatus={dbStatus}
+        onOpenDbStatus={() => setIsDbStatusModalOpen(true)}
       />
 
       {/* Main Content Area */}
       <div className="app-main">
+        <PwaBanner />
         <TopBar
           currentTab={currentTab}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           overdueHarvestCount={overdueHarvestCount}
           onQuickAddPanen={() => handleOpenPanenModal()}
-          onQuickAddKebun={() => setIsKebunModalOpen(true)}
+          onQuickAddKebun={handleOpenKebunModal}
           onShowAlerts={() => setCurrentTab('dashboard')}
+          dbStatus={dbStatus}
+          onOpenDbStatus={() => setIsDbStatusModalOpen(true)}
         />
 
         <main className="content-body">
@@ -179,9 +237,9 @@ export const App: React.FC = () => {
               kebunList={kebunList}
               onNavigate={setCurrentTab}
               onOpenPanenModal={handleOpenPanenModal}
-              onOpenPerawatanModal={() => setIsPerawatanModalOpen(true)}
-              onOpenPengeluaranLainModal={() => setIsPengeluaranLainModalOpen(true)}
-              onOpenKebunModal={() => setIsKebunModalOpen(true)}
+              onOpenPerawatanModal={handleOpenPerawatanModal}
+              onOpenPengeluaranLainModal={handleOpenPengeluaranLainModal}
+              onOpenKebunModal={handleOpenKebunModal}
             />
           )}
 
@@ -249,6 +307,15 @@ export const App: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onSuccess={(email) => setUserEmail(email)}
+      />
+
+      {/* Database Status Modal */}
+      <DatabaseStatusModal
+        isOpen={isDbStatusModalOpen}
+        onClose={() => setIsDbStatusModalOpen(false)}
+        status={dbStatus}
+        onRefresh={refreshDbStatus}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
       />
     </div>
   );

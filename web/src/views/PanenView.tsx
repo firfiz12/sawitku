@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sprout,
   Plus,
@@ -44,6 +44,24 @@ export const PanenView: React.FC<PanenViewProps> = ({
   const [hargaPerKg, setHargaPerKg] = useState('2400');
   const [pembeli, setPembeli] = useState('');
   const [catatan, setCatatan] = useState('');
+
+  // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
+  // reset form ke keadaan default untuk mode tambah.
+  useEffect(() => {
+    if (!isModalOpen || editingPanen !== null) return;
+    setKebunId(preselectedKebunId || kebunList[0]?.id || '');
+    setTanggal(new Date().toISOString().split('T')[0]);
+    setBeratKg('');
+    setJumlahJanjang('');
+    setHargaPerKg('2400');
+    setPembeli('');
+    setCatatan('');
+  }, [isModalOpen, editingPanen]);
+
+  const closeModal = () => {
+    setEditingPanen(null);
+    onCloseModal();
+  };
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -108,7 +126,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
       pembeli,
       catatan,
     });
-    onCloseModal();
+    closeModal();
   };
 
   return (
@@ -120,20 +138,20 @@ export const PanenView: React.FC<PanenViewProps> = ({
             <Weight size={22} color="#10b981" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Berat Panen</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>
-              {totalBeratFiltered.toLocaleString('id-ID')} <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>Kg</span>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Berat Panen</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
+              {totalBeratFiltered.toLocaleString('id-ID')} <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Kg</span>
             </div>
           </div>
         </div>
 
         <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Coins size={22} color="#f59e0b" />
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Coins size={22} color="#d97706" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Nilai Penjualan</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#34d399' }}>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Nilai Penjualan</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#059669' }}>
               {formatRupiah(totalPendapatanFiltered)}
             </div>
           </div>
@@ -141,16 +159,16 @@ export const PanenView: React.FC<PanenViewProps> = ({
       </div>
 
       {/* Filter and Actions Bar */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div className="card filter-bar" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: '0.88rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: '0.88rem' }}>
             <Filter size={16} />
             <span>Filter:</span>
           </div>
 
           <select
             id="filter-kebun-panen"
-            className="form-select"
+            className="form-select filter-control"
             style={{ width: 'auto', minWidth: 180 }}
             value={filterKebun}
             onChange={(e) => setFilterKebun(e.target.value)}
@@ -164,7 +182,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
           <input
             id="filter-month-panen"
             type="month"
-            className="form-input"
+            className="form-input filter-control"
             style={{ width: 'auto' }}
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}
@@ -185,7 +203,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
           )}
         </div>
 
-        <button id="btn-add-panen" className="btn btn-primary" onClick={handleOpenAdd}>
+        <button id="btn-add-panen" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
           <Plus size={18} />
           <span>+ Catat Panen</span>
         </button>
@@ -194,9 +212,9 @@ export const PanenView: React.FC<PanenViewProps> = ({
       {/* Table Data Panen */}
       <div className="card" style={{ padding: 0 }}>
         {filteredPanen.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-            <Sprout size={48} color="#274e36" style={{ margin: '0 auto 16px' }} />
-            <h3>Belum ada catatan panen</h3>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+            <Sprout size={48} color="#059669" style={{ margin: '0 auto 16px' }} />
+            <h3 style={{ color: '#0f172a' }}>Belum ada catatan panen</h3>
             <p style={{ marginTop: 6, fontSize: '0.9rem' }}>
               Klik tombol "+ Catat Panen" untuk mencatat hasil panen TBS sawit Anda.
             </p>
@@ -219,19 +237,19 @@ export const PanenView: React.FC<PanenViewProps> = ({
               <tbody>
                 {filteredPanen.map((p) => (
                   <tr key={p.id}>
-                    <td style={{ fontWeight: 600 }}>{p.tanggal}</td>
+                    <td style={{ fontWeight: 600, color: '#0f172a' }}>{p.tanggal}</td>
                     <td>
                       <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
                     </td>
-                    <td style={{ fontWeight: 700, color: '#fff' }}>
+                    <td style={{ fontWeight: 700, color: '#0f172a' }}>
                       {p.berat_kg.toLocaleString('id-ID')} Kg
                     </td>
                     <td>{p.jumlah_janjang > 0 ? `${p.jumlah_janjang} JJG` : '-'}</td>
                     <td>Rp {p.harga_per_kg.toLocaleString('id-ID')}</td>
-                    <td style={{ fontWeight: 700, color: '#34d399' }}>
+                    <td style={{ fontWeight: 700, color: '#059669' }}>
                       {formatRupiah(p.total_pendapatan)}
                     </td>
-                    <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{p.pembeli || '-'}</td>
+                    <td style={{ color: '#64748b', fontSize: '0.85rem' }}>{p.pembeli || '-'}</td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: 6 }}>
                         <button
@@ -266,11 +284,11 @@ export const PanenView: React.FC<PanenViewProps> = ({
 
       {/* Modal Catat Panen */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={onCloseModal}>
+        <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editingPanen ? 'Edit Catatan Panen' : 'Catat Panen Sawit (TBS)'}</h2>
-              <button className="modal-close-btn" onClick={onCloseModal}>
+              <button className="modal-close-btn" onClick={closeModal}>
                 <X size={20} />
               </button>
             </div>
@@ -352,18 +370,18 @@ export const PanenView: React.FC<PanenViewProps> = ({
               {/* Kalkulasi Otomatis Preview */}
               <div
                 style={{
-                  padding: '12px 16px',
-                  borderRadius: 10,
-                  background: 'rgba(16,185,129,0.1)',
-                  border: '1px solid rgba(16,185,129,0.25)',
+                  padding: '14px 18px',
+                  borderRadius: 12,
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
                   marginBottom: 18,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
               >
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Total Estimasi Pendapatan:</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399' }}>
+                <span style={{ fontSize: '0.85rem', color: '#047857', fontWeight: 600 }}>Total Estimasi Pendapatan:</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#047857' }}>
                   {formatRupiah(calculatedTotal)}
                 </span>
               </div>
@@ -393,7 +411,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
-                <button type="button" className="btn btn-secondary" onClick={onCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>
                   Batal
                 </button>
                 <button id="btn-submit-panen" type="submit" className="btn btn-primary">

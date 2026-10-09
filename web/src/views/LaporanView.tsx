@@ -179,11 +179,11 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       {/* Financial Overview Cards */}
       <div className="stat-grid" style={{ marginBottom: 24 }}>
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.15)' }}>
-            <ArrowUpRight size={22} color="#10b981" />
+          <div className="stat-icon" style={{ background: 'rgba(5, 150, 105, 0.12)' }}>
+            <ArrowUpRight size={22} color="#059669" />
           </div>
           <div className="stat-label">Total Pendapatan TBS</div>
-          <div className="stat-value" style={{ color: '#34d399' }}>
+          <div className="stat-value" style={{ color: '#047857' }}>
             {formatRupiah(totalPendapatan)}
           </div>
           <div className="stat-subtext">
@@ -192,11 +192,11 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         </div>
 
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(239,68,68,0.15)' }}>
-            <ArrowDownRight size={22} color="#ef4444" />
+          <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
+            <ArrowDownRight size={22} color="#dc2626" />
           </div>
           <div className="stat-label">Total Pengeluaran</div>
-          <div className="stat-value" style={{ color: '#f87171' }}>
+          <div className="stat-value" style={{ color: '#b91c1c' }}>
             {formatRupiah(totalPengeluaran)}
           </div>
           <div className="stat-subtext">
@@ -205,11 +205,11 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         </div>
 
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: labaBersih >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }}>
-            <TrendingUp size={22} color={labaBersih >= 0 ? '#10b981' : '#ef4444'} />
+          <div className="stat-icon" style={{ background: labaBersih >= 0 ? 'rgba(5, 150, 105, 0.12)' : 'rgba(220, 38, 38, 0.12)' }}>
+            <TrendingUp size={22} color={labaBersih >= 0 ? '#059669' : '#dc2626'} />
           </div>
           <div className="stat-label">Laba Bersih Operasional</div>
-          <div className="stat-value" style={{ color: labaBersih >= 0 ? '#10b981' : '#f87171' }}>
+          <div className="stat-value" style={{ color: labaBersih >= 0 ? '#047857' : '#b91c1c' }}>
             {formatRupiah(labaBersih)}
           </div>
           <div className="stat-subtext">
@@ -219,7 +219,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       </div>
 
       {/* Production Chart & Breakdown Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: 24, marginBottom: 28 }}>
         {/* Visual Chart Produksi TBS Bulanan */}
         <div className="card">
           <div className="card-header">
@@ -259,7 +259,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                     }}
                     title={`${m.label}: ${m.tbsKg.toLocaleString('id-ID')} Kg`}
                   />
-                  <div style={{ fontSize: '0.75rem', color: '#e2e8f0', marginTop: 10, fontWeight: 600 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 10, fontWeight: 700 }}>
                     {m.label}
                   </div>
                 </div>
@@ -272,22 +272,22 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 style={{ fontSize: '1.15rem' }}>Rincian Alokasi Biaya</h3>
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Proporsi pengeluaran perawatan dan umum</p>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Rincian Alokasi Biaya</h3>
+              <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Proporsi pengeluaran perawatan dan operasional</p>
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: 6 }}>
-                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>Perawatan Kebun (Pupuk, Gulma, Upah)</span>
-                <span style={{ fontWeight: 700, color: '#06b6d4' }}>{formatRupiah(totalBiayaPerawatan)}</span>
+                <span style={{ color: '#1e293b', fontWeight: 600 }}>Perawatan Kebun (Pupuk, Gulma, Upah)</span>
+                <span style={{ fontWeight: 700, color: '#0284c7' }}>{formatRupiah(totalBiayaPerawatan)}</span>
               </div>
-              <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
-                    background: '#06b6d4',
+                    background: '#0284c7',
                     width: `${totalPengeluaran > 0 ? (totalBiayaPerawatan / totalPengeluaran) * 100 : 0}%`,
                   }}
                 />
@@ -296,14 +296,14 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: 6 }}>
-                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>Pengeluaran Lain (Alat, Solar BBM, Jalan)</span>
-                <span style={{ fontWeight: 700, color: '#f59e0b' }}>{formatRupiah(totalPengeluaranLain)}</span>
+                <span style={{ color: '#1e293b', fontWeight: 600 }}>Pengeluaran Lain (Alat, Solar BBM, Lansir)</span>
+                <span style={{ fontWeight: 700, color: '#d97706' }}>{formatRupiah(totalPengeluaranLain)}</span>
               </div>
-              <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
-                    background: '#f59e0b',
+                    background: '#d97706',
                     width: `${totalPengeluaran > 0 ? (totalPengeluaranLain / totalPengeluaran) * 100 : 0}%`,
                   }}
                 />
@@ -313,18 +313,18 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             <div
               style={{
                 marginTop: 20,
-                padding: '14px 16px',
-                borderRadius: 10,
-                background: 'rgba(0,0,0,0.2)',
-                border: '1px solid var(--border-subtle)',
+                padding: '16px',
+                borderRadius: 12,
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
               }}
             >
-              <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+              <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
                 Rata-rata Harga Jual TBS Periode Ini:
               </div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginTop: 4 }}>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
                 Rp {totalBeratTBS > 0 ? Math.round(totalPendapatan / totalBeratTBS).toLocaleString('id-ID') : 0}{' '}
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500 }}>/ Kg TBS</span>
+                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>/ Kg TBS</span>
               </div>
             </div>
           </div>
@@ -335,8 +335,8 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 style={{ fontSize: '1.2rem' }}>Analisis Produktivitas per Blok Kebun (Yield Kg/Ha)</h3>
-            <p style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Kinerja hasil panen dan pendapatan setiap blok lahan</p>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Analisis Produktivitas per Blok Kebun (Yield Kg/Ha)</h3>
+            <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Kinerja hasil panen dan pendapatan setiap blok lahan</p>
           </div>
         </div>
 
@@ -356,7 +356,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             <tbody>
               {kebunPerformance.map((item) => (
                 <tr key={item.kebun.id}>
-                  <td style={{ fontWeight: 700, color: '#f0fdf4' }}>{item.kebun.nama}</td>
+                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.kebun.nama}</td>
                   <td>{item.kebun.luas_hektar} Ha</td>
                   <td style={{ fontWeight: 600 }}>{item.totalBerat.toLocaleString('id-ID')} Kg</td>
                   <td>
@@ -364,8 +364,8 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                       {Math.round(item.yieldKgPerHa).toLocaleString('id-ID')} Kg/Ha
                     </span>
                   </td>
-                  <td style={{ fontWeight: 700, color: '#34d399' }}>{formatRupiah(item.totalPendapatan)}</td>
-                  <td style={{ color: '#f87171' }}>{formatRupiah(item.totalPerawatan)}</td>
+                  <td style={{ fontWeight: 700, color: '#047857' }}>{formatRupiah(item.totalPendapatan)}</td>
+                  <td style={{ color: '#dc2626', fontWeight: 600 }}>{formatRupiah(item.totalPerawatan)}</td>
                   <td>{item.kontribusiPersen.toFixed(1)}%</td>
                 </tr>
               ))}

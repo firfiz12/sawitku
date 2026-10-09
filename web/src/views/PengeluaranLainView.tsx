@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Receipt,
   Plus,
@@ -36,6 +36,21 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [jumlah, setJumlah] = useState('');
   const [keterangan, setKeterangan] = useState('');
+
+  // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
+  // reset form ke keadaan default untuk mode tambah.
+  useEffect(() => {
+    if (!isModalOpen || editingItem !== null) return;
+    setKategori('Alat & Mesin');
+    setTanggal(new Date().toISOString().split('T')[0]);
+    setJumlah('');
+    setKeterangan('');
+  }, [isModalOpen, editingItem]);
+
+  const closeModal = () => {
+    setEditingItem(null);
+    onCloseModal();
+  };
 
   const KATEGORI_OPTIONS = [
     'Alat & Mesin',
@@ -92,7 +107,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
       jumlah: parseFloat(jumlah) || 0,
       keterangan,
     });
-    onCloseModal();
+    closeModal();
   };
 
   return (
@@ -100,24 +115,24 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Receipt size={22} color="#f59e0b" />
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Receipt size={22} color="#d97706" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Transaksi Pengeluaran Lain</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>
-              {filteredList.length} <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>Item</span>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Transaksi Pengeluaran Lain</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
+              {filteredList.length} <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Item</span>
             </div>
           </div>
         </div>
 
         <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <DollarSign size={22} color="#ef4444" />
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <DollarSign size={22} color="#dc2626" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Nominal Pengeluaran</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f87171' }}>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Nominal Pengeluaran</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#dc2626' }}>
               {formatRupiah(totalFiltered)}
             </div>
           </div>
@@ -125,16 +140,16 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
       </div>
 
       {/* Filter and Actions Bar */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div className="card filter-bar" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: '0.88rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: '0.88rem' }}>
             <Filter size={16} />
             <span>Filter:</span>
           </div>
 
           <select
             id="filter-kategori-pengeluaran"
-            className="form-select"
+            className="form-select filter-control"
             style={{ width: 'auto', minWidth: 200 }}
             value={filterKategori}
             onChange={(e) => setFilterKategori(e.target.value)}
@@ -148,7 +163,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
           <input
             id="filter-month-pengeluaran"
             type="month"
-            className="form-input"
+            className="form-input filter-control"
             style={{ width: 'auto' }}
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}
@@ -169,7 +184,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
           )}
         </div>
 
-        <button id="btn-add-pengeluaran-lain" className="btn btn-primary" onClick={handleOpenAdd}>
+        <button id="btn-add-pengeluaran-lain" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
           <Plus size={18} />
           <span>+ Catat Pengeluaran Lain</span>
         </button>
@@ -178,9 +193,9 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
       {/* Table Data Pengeluaran Lain */}
       <div className="card" style={{ padding: 0 }}>
         {filteredList.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-            <Receipt size={48} color="#274e36" style={{ margin: '0 auto 16px' }} />
-            <h3>Belum ada pengeluaran lain</h3>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+            <Receipt size={48} color="#d97706" style={{ margin: '0 auto 16px' }} />
+            <h3 style={{ color: '#0f172a' }}>Belum ada pengeluaran lain</h3>
             <p style={{ marginTop: 6, fontSize: '0.9rem' }}>
               Catat pembelian alat (egrek, dodos, angkong), bbm solar, jalan kebun, atau upah lansir.
             </p>
@@ -200,12 +215,12 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
               <tbody>
                 {filteredList.map((item) => (
                   <tr key={item.id}>
-                    <td style={{ fontWeight: 600 }}>{item.tanggal}</td>
+                    <td style={{ fontWeight: 600, color: '#0f172a' }}>{item.tanggal}</td>
                     <td>
                       <span className="badge badge-warning">{item.kategori}</span>
                     </td>
-                    <td style={{ color: '#e2e8f0' }}>{item.keterangan || '-'}</td>
-                    <td style={{ fontWeight: 700, color: '#f87171' }}>
+                    <td style={{ color: '#334155' }}>{item.keterangan || '-'}</td>
+                    <td style={{ fontWeight: 700, color: '#dc2626' }}>
                       {formatRupiah(item.jumlah)}
                     </td>
                     <td style={{ textAlign: 'right' }}>
@@ -242,11 +257,11 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
 
       {/* Modal Tambah/Edit Pengeluaran Lain */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={onCloseModal}>
+        <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editingItem ? 'Edit Pengeluaran Lain' : 'Catat Pengeluaran Lain'}</h2>
-              <button className="modal-close-btn" onClick={onCloseModal}>
+              <button className="modal-close-btn" onClick={closeModal}>
                 <X size={20} />
               </button>
             </div>
@@ -307,7 +322,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
-                <button type="button" className="btn btn-secondary" onClick={onCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>
                   Batal
                 </button>
                 <button id="btn-submit-pengeluaran-lain" type="submit" className="btn btn-primary">

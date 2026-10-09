@@ -91,11 +91,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             style={{
               padding: '10px 14px',
               borderRadius: 8,
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
+              background: '#fffbeb',
+              border: '1px solid #fde68a',
               marginBottom: 16,
               fontSize: '0.8rem',
-              color: '#fbbf24',
+              color: '#b45309',
+              fontWeight: 600,
             }}
           >
             ⚠️ Supabase credentials belum diisi di file <code>.env</code>. Anda dapat mencoba mode demo lokal langsung.
@@ -107,14 +108,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             style={{
               padding: '10px 14px',
               borderRadius: 8,
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
               marginBottom: 16,
               fontSize: '0.85rem',
-              color: '#f87171',
+              color: '#b91c1c',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
+              fontWeight: 600,
             }}
           >
             <AlertCircle size={16} />
@@ -127,14 +129,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             style={{
               padding: '10px 14px',
               borderRadius: 8,
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
+              background: '#ecfdf5',
+              border: '1px solid #a7f3d0',
               marginBottom: 16,
               fontSize: '0.85rem',
-              color: '#34d399',
+              color: '#047857',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
+              fontWeight: 600,
             }}
           >
             <CheckCircle2 size={16} />

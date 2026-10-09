@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wrench,
   Plus,
@@ -42,6 +42,25 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
   const [biayaTenaga, setBiayaTenaga] = useState('');
   const [biayaBahan, setBiayaBahan] = useState('');
   const [catatan, setCatatan] = useState('');
+
+  // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
+  // reset form ke keadaan default untuk mode tambah.
+  useEffect(() => {
+    if (!isModalOpen || editingPerawatan !== null) return;
+    setKebunId(kebunList[0]?.id || '');
+    setTanggal(new Date().toISOString().split('T')[0]);
+    setJenisPerawatan('Pemupukan');
+    setNamaBahan('');
+    setDosis('');
+    setBiayaTenaga('');
+    setBiayaBahan('');
+    setCatatan('');
+  }, [isModalOpen, editingPerawatan]);
+
+  const closeModal = () => {
+    setEditingPerawatan(null);
+    onCloseModal();
+  };
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -118,7 +137,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
       total_biaya: calculatedTotal,
       catatan,
     });
-    onCloseModal();
+    closeModal();
   };
 
   return (
@@ -151,7 +170,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
       </div>
 
       {/* Filter and Actions Bar */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div className="card filter-bar" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: '0.88rem' }}>
             <Filter size={16} />
@@ -160,7 +179,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
 
           <select
             id="filter-kebun-perawatan"
-            className="form-select"
+            className="form-select filter-control"
             style={{ width: 'auto', minWidth: 180 }}
             value={filterKebun}
             onChange={(e) => setFilterKebun(e.target.value)}
@@ -173,7 +192,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
 
           <select
             id="filter-jenis-perawatan"
-            className="form-select"
+            className="form-select filter-control"
             style={{ width: 'auto', minWidth: 180 }}
             value={filterJenis}
             onChange={(e) => setFilterJenis(e.target.value)}
@@ -198,7 +217,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
           )}
         </div>
 
-        <button id="btn-add-perawatan" className="btn btn-primary" onClick={handleOpenAdd}>
+        <button id="btn-add-perawatan" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
           <Plus size={18} />
           <span>+ Catat Perawatan</span>
         </button>
@@ -207,9 +226,9 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
       {/* Table Data Perawatan */}
       <div className="card" style={{ padding: 0 }}>
         {filteredPerawatan.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-            <Wrench size={48} color="#274e36" style={{ margin: '0 auto 16px' }} />
-            <h3>Belum ada riwayat perawatan</h3>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+            <Wrench size={48} color="#059669" style={{ margin: '0 auto 16px' }} />
+            <h3 style={{ color: '#0f172a' }}>Belum ada riwayat perawatan</h3>
             <p style={{ marginTop: 6, fontSize: '0.9rem' }}>
               Klik tombol "+ Catat Perawatan" untuk mencatat pemupukan, semprot rumput, atau pruning.
             </p>
@@ -240,12 +259,12 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                       <span className="badge badge-warning">{p.jenis_perawatan}</span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#f0fdf4' }}>{p.nama_bahan || '-'}</div>
-                      {p.dosis && <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Dosis: {p.dosis}</div>}
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{p.nama_bahan || '-'}</div>
+                      {p.dosis && <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Dosis: {p.dosis}</div>}
                     </td>
                     <td>{formatRupiah(p.biaya_tenaga_kerja || 0)}</td>
                     <td>{formatRupiah(p.biaya_bahan || 0)}</td>
-                    <td style={{ fontWeight: 700, color: '#f87171' }}>
+                    <td style={{ fontWeight: 800, color: '#dc2626' }}>
                       {formatRupiah(p.total_biaya)}
                     </td>
                     <td style={{ textAlign: 'right' }}>
@@ -282,11 +301,11 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
 
       {/* Modal Catat Perawatan */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={onCloseModal}>
+        <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editingPerawatan ? 'Edit Catatan Perawatan' : 'Catat Aktivitas Perawatan Kebun'}</h2>
-              <button className="modal-close-btn" onClick={onCloseModal}>
+              <button className="modal-close-btn" onClick={closeModal}>
                 <X size={20} />
               </button>
             </div>
@@ -421,7 +440,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
-                <button type="button" className="btn btn-secondary" onClick={onCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>
                   Batal
                 </button>
                 <button id="btn-submit-perawatan" type="submit" className="btn btn-primary">
