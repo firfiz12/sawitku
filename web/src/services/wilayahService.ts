@@ -1,7 +1,6 @@
-export interface WilayahItem {
-  k: string;
-  n: string;
-}
+// Item wilayah disimpan sebagai tuple [kode, nama] agar file tetap ringkas
+// (bukan objek {k, n}). Contoh: ['11', 'Aceh'].
+export type WilayahItem = [string, string];
 
 interface WilayahData {
   v: number;

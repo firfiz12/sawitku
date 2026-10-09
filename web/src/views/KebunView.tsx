@@ -226,10 +226,10 @@ export const KebunView: React.FC<KebunViewProps> = ({
       varietas,
       rotasi_panen_hari: parseInt(rotasiPanenHari, 10) || 14,
       adm4_code: desaCode || undefined,
-      nama_provinsi: provinceList.find((x) => x.k === provCode)?.n,
-      nama_kabupaten: regencyList.find((x) => x.k === kabCode)?.n,
-      nama_kecamatan: districtList.find((x) => x.k === kecCode)?.n,
-      nama_desa: villageList.find((x) => x.k === desaCode)?.n,
+      nama_provinsi: provinceList.find(([k]) => k === provCode)?.[1],
+      nama_kabupaten: regencyList.find(([k]) => k === kabCode)?.[1],
+      nama_kecamatan: districtList.find(([k]) => k === kecCode)?.[1],
+      nama_desa: villageList.find(([k]) => k === desaCode)?.[1],
     });
     closeModal();
   };
@@ -461,8 +461,8 @@ export const KebunView: React.FC<KebunViewProps> = ({
                         onChange={(e) => handleProvChange(e.target.value)}
                       >
                         <option value="">— Pilih Provinsi —</option>
-                        {provinceList.map((p) => (
-                          <option key={p.k} value={p.k}>{p.n}</option>
+                        {provinceList.map(([k, n]) => (
+                          <option key={k} value={k}>{n}</option>
                         ))}
                       </select>
                     </div>
@@ -477,8 +477,8 @@ export const KebunView: React.FC<KebunViewProps> = ({
                         disabled={!provCode || regencyList.length === 0}
                       >
                         <option value="">— Pilih Kab/Kota —</option>
-                        {regencyList.map((p) => (
-                          <option key={p.k} value={p.k}>{p.n}</option>
+                        {regencyList.map(([k, n]) => (
+                          <option key={k} value={k}>{n}</option>
                         ))}
                       </select>
                     </div>
@@ -493,8 +493,8 @@ export const KebunView: React.FC<KebunViewProps> = ({
                         disabled={!kabCode || districtList.length === 0}
                       >
                         <option value="">— Pilih Kecamatan —</option>
-                        {districtList.map((p) => (
-                          <option key={p.k} value={p.k}>{p.n}</option>
+                        {districtList.map(([k, n]) => (
+                          <option key={k} value={k}>{n}</option>
                         ))}
                       </select>
                     </div>
@@ -509,8 +509,8 @@ export const KebunView: React.FC<KebunViewProps> = ({
                         disabled={!kecCode || villageList.length === 0}
                       >
                         <option value="">— Pilih Desa —</option>
-                        {villageList.map((p) => (
-                          <option key={p.k} value={p.k}>{p.n}</option>
+                        {villageList.map(([k, n]) => (
+                          <option key={k} value={k}>{n}</option>
                         ))}
                       </select>
                     </div>
