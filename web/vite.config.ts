@@ -2,53 +2,57 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
-export default defineConfig({
-  server: {
-    host: true,
-  },
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons/*.png'],
-      manifest: {
-        name: 'SawitKu - Manajemen Kebun Sawit',
-        short_name: 'SawitKu',
-        description: 'Aplikasi manajemen kebun kelapa sawit: catat panen, perawatan, pengeluaran, dan analitik produktivitas.',
-        theme_color: '#059669',
-        background_color: '#f8fafc',
-        display: 'standalone',
-        orientation: 'portrait-primary',
-        scope: '/',
-        start_url: '/',
-        lang: 'id',
-        categories: ['productivity', 'business'],
-        icons: [
-          { src: '/icons/icon-72x72.png',   sizes: '72x72',   type: 'image/png' },
-          { src: '/icons/icon-96x96.png',   sizes: '96x96',   type: 'image/png' },
-          { src: '/icons/icon-128x128.png', sizes: '128x128', type: 'image/png' },
-          { src: '/icons/icon-144x144.png', sizes: '144x144', type: 'image/png' },
-          { src: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
-          { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-          { src: '/icons/icon-384x384.png', sizes: '384x384', type: 'image/png' },
-          { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-        ],
-        shortcuts: [
-          {
-            name: 'Catat Panen',
-            short_name: 'Panen',
-            url: '/#panen',
-            icons: [{ src: '/icons/icon-96x96.png', sizes: '96x96' }],
-          },
-          {
-            name: 'Dashboard',
-            short_name: 'Dashboard',
-            url: '/#dashboard',
-            icons: [{ src: '/icons/icon-96x96.png', sizes: '96x96' }],
-          },
-        ],
-      },
+export default defineConfig(({ mode }) => {
+  // GitHub Pages memakai base /sawitku/ saat build, root / saat dev
+  const base = mode === 'development' ? '/' : '/sawitku/'
+
+  return {
+    base,
+    server: {
+      host: true,
+    },
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.svg', 'icons/*.png'],
+        manifest: {
+          name: 'SawitKu - Manajemen Kebun Sawit',
+          short_name: 'SawitKu',
+          description: 'Aplikasi manajemen kebun kelapa sawit: catat panen, perawatan, pengeluaran, dan analitik produktivitas.',
+          theme_color: '#059669',
+          background_color: '#f8fafc',
+          display: 'standalone',
+          orientation: 'portrait-primary',
+          scope: base,
+          start_url: base,
+          lang: 'id',
+          categories: ['productivity', 'business'],
+          icons: [
+            { src: `${base}icons/icon-72x72.png`,   sizes: '72x72',   type: 'image/png' },
+            { src: `${base}icons/icon-96x96.png`,   sizes: '96x96',   type: 'image/png' },
+            { src: `${base}icons/icon-128x128.png`, sizes: '128x128', type: 'image/png' },
+            { src: `${base}icons/icon-144x144.png`, sizes: '144x144', type: 'image/png' },
+            { src: `${base}icons/icon-152x152.png`, sizes: '152x152', type: 'image/png' },
+            { src: `${base}icons/icon-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+            { src: `${base}icons/icon-384x384.png`, sizes: '384x384', type: 'image/png' },
+            { src: `${base}icons/icon-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          ],
+          shortcuts: [
+            {
+              name: 'Catat Panen',
+              short_name: 'Panen',
+              url: `${base}#panen`,
+              icons: [{ src: `${base}icons/icon-96x96.png`, sizes: '96x96' }],
+            },
+            {
+              name: 'Dashboard',
+              short_name: 'Dashboard',
+              url: `${base}#dashboard`,
+              icons: [{ src: `${base}icons/icon-96x96.png`, sizes: '96x96' }],
+            },
+          ],
+        },
       workbox: {
         // Cache semua asset statik
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}', 'data/wilayah.json'],
@@ -96,4 +100,5 @@ export default defineConfig({
       },
     }),
   ],
+  }
 })

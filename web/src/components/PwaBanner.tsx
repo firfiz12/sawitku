@@ -165,7 +165,7 @@ export const PwaBanner: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <img
-                src="/icons/icon-96x96.png"
+                src={`${import.meta.env.BASE_URL}icons/icon-96x96.png`}
                 alt="SawitKu"
                 style={{ width: 42, height: 42, borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
               />

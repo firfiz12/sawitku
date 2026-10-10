@@ -20,7 +20,7 @@ let lastError: string | null = null;
 export function getWilayah(): Promise<WilayahData> {
   if (cached) return Promise.resolve(cached);
   if (!loading) {
-    loading = fetch('/data/wilayah.json', { cache: 'force-cache' })
+    loading = fetch(`${import.meta.env.BASE_URL}data/wilayah.json`, { cache: 'force-cache' })
       .then((res) => {
         if (!res.ok) throw new Error(`Gagal memuat data wilayah (HTTP ${res.status})`);
         return res.json();
