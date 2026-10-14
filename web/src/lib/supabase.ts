@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+function readEnv(rawValue: string | undefined, name: string): string {
+  let value = (rawValue || '').trim().replace(/^["']|["']$/g, '');
+  const prefix = `${name}=`;
+  if (value.startsWith(prefix)) {
+    value = value.slice(prefix.length).trim().replace(/^["']|["']$/g, '');
+  }
+  return value;
+}
+
+const rawUrl = readEnv(import.meta.env.VITE_SUPABASE_URL, 'VITE_SUPABASE_URL');
 const supabaseUrl = rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
-const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const supabaseAnonKey = readEnv(import.meta.env.VITE_SUPABASE_ANON_KEY, 'VITE_SUPABASE_ANON_KEY');
 
 export const isSupabaseConfigured =
   supabaseUrl !== '' &&
