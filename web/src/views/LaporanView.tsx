@@ -64,11 +64,18 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   });
 
   // Totals
-  const totalBeratTBS = filteredPanen.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
+  const totalBeratBersih = filteredPanen.reduce((acc, p) => acc + (Number(p.berat_bersih_kg) || 0), 0);
+  const totalBeratBrondol = filteredPanen.reduce((acc, p) => acc + (Number(p.berat_brondolan_kg) || 0), 0);
+  const totalBeratTBS = totalBeratBersih + totalBeratBrondol;
+  const pendapatanTbs = filteredPanen.reduce(
+    (acc, p) => acc + (Number(p.berat_bersih_kg) || 0) * (Number(p.harga_per_kg) || 0),
+    0
+  );
   const totalPendapatan = filteredPanen.reduce((acc, p) => acc + (Number(p.total_pendapatan) || 0), 0);
   const totalBiayaPerawatan = filteredPerawatan.reduce((acc, p) => acc + (Number(p.total_biaya) || 0), 0);
   const totalPengeluaranLain = filteredPengeluaranLain.reduce((acc, p) => acc + (Number(p.jumlah) || 0), 0);
-  const totalPengeluaran = totalBiayaPerawatan + totalPengeluaranLain;
+  const totalBiayaPanen = filteredPanen.reduce((acc, p) => acc + (Number(p.upah_panen) || 0), 0);
+  const totalPengeluaran = totalBiayaPerawatan + totalPengeluaranLain + totalBiayaPanen;
   const labaBersih = totalPendapatan - totalPengeluaran;
   const marginProfit = totalPendapatan > 0 ? (labaBersih / totalPendapatan) * 100 : 0;
 
@@ -87,7 +94,10 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
   const kebunPerformance = displayedKebunList.map((k) => {
     const kPanen = filteredPanen.filter((p) => p.kebun_id === k.id);
-    const kBerat = kPanen.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
+    const kBerat = kPanen.reduce(
+      (acc, p) => acc + (Number(p.berat_bersih_kg) || 0) + (Number(p.berat_brondolan_kg) || 0),
+      0
+    );
     const kPendapatan = kPanen.reduce((acc, p) => acc + (Number(p.total_pendapatan) || 0), 0);
     const kPerawatan = filteredPerawatan
       .filter((p) => p.kebun_id === k.id)
@@ -117,11 +127,15 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     const pwBulan = perawatanList.filter((p) => p.tanggal.startsWith(ym));
     const plBulan = pengeluaranLainList.filter((p) => p.tanggal.startsWith(ym));
 
-    const tbsKg = pBulan.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
+    const tbsKg = pBulan.reduce(
+      (acc, p) => acc + (Number(p.berat_bersih_kg) || 0) + (Number(p.berat_brondolan_kg) || 0),
+      0
+    );
     const pendapatan = pBulan.reduce((acc, p) => acc + (Number(p.total_pendapatan) || 0), 0);
     const pengeluaran =
       pwBulan.reduce((acc, p) => acc + (Number(p.total_biaya) || 0), 0) +
-      plBulan.reduce((acc, p) => acc + (Number(p.jumlah) || 0), 0);
+      plBulan.reduce((acc, p) => acc + (Number(p.jumlah) || 0), 0) +
+      pBulan.reduce((acc, p) => acc + (Number(p.upah_panen) || 0), 0);
 
     monthlyData.push({ label, yearMonth: ym, tbsKg, pendapatan, pengeluaran });
   }
@@ -134,7 +148,13 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
     filteredPanen.forEach((p) => {
       const k = kebunList.find((item) => item.id === p.kebun_id)?.nama || 'Kebun';
-      csv += `"${p.tanggal}","Panen","${k}","TBS ${p.berat_kg} kg @ Rp ${p.harga_per_kg}",${p.total_pendapatan},0\n`;
+      const brondol = p.berat_brondolan_kg > 0
+        ? ` + Brondol ${p.berat_brondolan_kg} kg @ Rp ${p.harga_brondolan_per_kg}`
+        : '';
+      csv += `"${p.tanggal}","Panen","${k}","TBS Bersih ${p.berat_bersih_kg} kg @ Rp ${p.harga_per_kg}${brondol}",${p.total_pendapatan},0\n`;
+      if (p.upah_panen > 0) {
+        csv += `"${p.tanggal}","Biaya Panen","${k}","Upah panen",0,${p.upah_panen}\n`;
+      }
     });
 
     filteredPerawatan.forEach((p) => {
@@ -236,13 +256,16 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             <div className="stat-icon" style={{ background: 'rgba(5, 150, 105, 0.12)' }}>
               <ArrowUpRight size={22} color="#059669" />
             </div>
-            <div className="stat-label">Total Pendapatan TBS</div>
+            <div className="stat-label">Total Pendapatan</div>
           </div>
           <div className="stat-value" style={{ color: '#047857' }}>
             {formatRupiah(totalPendapatan)}
           </div>
           <div className="stat-subtext">
-            <span>{totalBeratTBS.toLocaleString('id-ID')} Kg Total Panen</span>
+            <span>
+              {totalBeratBersih.toLocaleString('id-ID')} Kg TBS
+              {totalBeratBrondol > 0 ? ` + ${totalBeratBrondol.toLocaleString('id-ID')} Kg Brondol` : ''}
+            </span>
           </div>
         </div>
 
@@ -258,6 +281,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           </div>
           <div className="stat-subtext" style={{ overflowWrap: 'anywhere' }}>
             <span>Perawatan: {formatRupiah(totalBiayaPerawatan)}</span>
+            <span>Panen: {formatRupiah(totalBiayaPanen)}</span>
           </div>
         </div>
 
@@ -372,6 +396,22 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
               </div>
             </div>
 
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
+                <span style={{ color: '#1e293b', fontWeight: 600 }}>Upah Panen</span>
+                <span style={{ fontWeight: 700, color: '#dc2626' }}>{formatRupiah(totalBiayaPanen)}</span>
+              </div>
+              <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    background: '#dc2626',
+                    width: `${totalPengeluaran > 0 ? (totalBiayaPanen / totalPengeluaran) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+
             <div
               style={{
                 marginTop: 20,
@@ -385,7 +425,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                 Rata-rata Harga Jual TBS Periode Ini:
               </div>
               <div className="num-xl" style={{ color: '#0f172a', marginTop: 4 }}>
-                Rp {totalBeratTBS > 0 ? Math.round(totalPendapatan / totalBeratTBS).toLocaleString('id-ID') : 0}{' '}
+                Rp {totalBeratBersih > 0 ? Math.round(pendapatanTbs / totalBeratBersih).toLocaleString('id-ID') : 0}{' '}
                 <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>/ Kg TBS</span>
               </div>
             </div>

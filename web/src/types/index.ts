@@ -23,9 +23,14 @@ export interface Panen {
   user_id?: string;
   kebun_id: string;
   tanggal: string; // YYYY-MM-DD
-  berat_kg: number;
+  berat_kotor_kg: number;
+  berat_bersih_kg: number;
   jumlah_janjang: number;
   harga_per_kg: number;
+  berat_brondolan_kg: number;
+  harga_brondolan_per_kg: number;
+  pendapatan_brondolan: number;
+  upah_panen: number;
   total_pendapatan: number;
   pembeli: string;
   catatan: string;

@@ -31,3 +31,10 @@ dist/
 
 # PWA dev-only build output
 web/dev-dist/
+
+# Supabase CLI local artifacts
+.temp/
+**/.temp/
+.branches/
+**/.branches/
+

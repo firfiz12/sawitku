@@ -422,7 +422,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div style={{ minWidth: 0, overflow: 'hidden' }}>
                       <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getKebunName(p.kebun_id)}</div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, whiteSpace: 'nowrap' }}>
-                        {p.tanggal} • {p.berat_kg.toLocaleString('id-ID')} Kg ({p.jumlah_janjang} janjang)
+                        {p.tanggal} • {p.berat_bersih_kg.toLocaleString('id-ID')} Kg ({p.jumlah_janjang} janjang){p.berat_brondolan_kg > 0 ? ` + ${p.berat_brondolan_kg.toLocaleString('id-ID')} Kg brondol` : ''}
                       </div>
                     </div>
                   </div>

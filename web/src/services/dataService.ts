@@ -39,10 +39,14 @@ const DEFAULT_PANEN: Panen[] = [
     id: 'p1-panen-1',
     kebun_id: 'k1-kebun-utama',
     tanggal: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0],
-    berat_kg: 3250,
-    jumlah_janjang: 215,
+    berat_kotor_kg: 3400,
+    berat_bersih_kg: 3250,
     harga_per_kg: 2650,
-    total_pendapatan: 3250 * 2650,
+    berat_brondolan_kg: 150,
+    harga_brondolan_per_kg: 1800,
+    pendapatan_brondolan: 150 * 1800,
+    upah_panen: 450000,
+    total_pendapatan: 3250 * 2650 + 150 * 1800,
     pembeli: 'PKS PT Sawit Makmur',
     catatan: 'Kualitas buah matang sempurna (BM)',
   },
@@ -50,9 +54,13 @@ const DEFAULT_PANEN: Panen[] = [
     id: 'p2-panen-2',
     kebun_id: 'k2-kebun-rawa',
     tanggal: new Date(Date.now() - 15 * 86400000).toISOString().split('T')[0],
-    berat_kg: 1820,
-    jumlah_janjang: 130,
+    berat_kotor_kg: 1900,
+    berat_bersih_kg: 1820,
     harga_per_kg: 2650,
+    berat_brondolan_kg: 0,
+    harga_brondolan_per_kg: 0,
+    pendapatan_brondolan: 0,
+    upah_panen: 300000,
     total_pendapatan: 1820 * 2650,
     pembeli: 'UD Tani Sejahtera',
     catatan: 'Panen rotasi ke-8',
@@ -539,15 +547,20 @@ export const dataService = {
                 meta = {};
               }
 
+              const beratBersihKg = Number(row.berat_bersih_kg || row.berat_kg || 0);
               return {
                 id: row.id,
                 user_id: row.user_id,
                 kebun_id: row.kebun_id,
                 tanggal: typeof row.tanggal === 'string' ? row.tanggal.split('T')[0] : row.tanggal,
-                berat_kg: Number(row.berat_kg || 0),
+                berat_kotor_kg: Number(row.berat_kotor_kg || 0),
+                berat_bersih_kg: beratBersihKg,
                 harga_per_kg: Number(row.harga_per_kg || 0),
+                berat_brondolan_kg: Number(row.berat_brondolan_kg || 0),
+                harga_brondolan_per_kg: Number(row.harga_brondolan_per_kg || 0),
+                pendapatan_brondolan: Number(row.pendapatan_brondolan || 0),
+                upah_panen: Number(row.biaya_produksi || 0),
                 total_pendapatan: Number(row.pendapatan || 0),
-                jumlah_janjang: Number(meta.jumlah_janjang || 0),
                 pembeli: (meta.pembeli as string) || 'PKS Terdekat',
                 catatan: (meta.catatan as string) || (typeof row.keterangan === 'string' && !row.keterangan.startsWith('{') ? row.keterangan : ''),
                 created_at: row.created_at,
@@ -568,10 +581,14 @@ export const dataService = {
 
   async savePanen(panen: Omit<Panen, 'id'> & { id?: string }): Promise<Panen> {
     const id = panen.id || crypto.randomUUID();
-    const total_pendapatan = Number(panen.berat_kg) * Number(panen.harga_per_kg);
+    const pendapatan_brondolan =
+      Number(panen.berat_brondolan_kg) * Number(panen.harga_brondolan_per_kg);
+    const total_pendapatan =
+      Number(panen.berat_bersih_kg) * Number(panen.harga_per_kg) + pendapatan_brondolan;
     const item: Panen = {
       ...panen,
       id,
+      pendapatan_brondolan,
       total_pendapatan,
       updated_at: new Date().toISOString(),
     };
@@ -593,11 +610,16 @@ export const dataService = {
           user_id: user.id,
           kebun_id: item.kebun_id,
           tanggal: new Date(item.tanggal).toISOString(),
-          berat_kg: item.berat_kg,
+          berat_kotor_kg: item.berat_kotor_kg,
+          berat_bersih_kg: item.berat_bersih_kg,
+          berat_kg: item.berat_bersih_kg,
           harga_per_kg: item.harga_per_kg,
+          berat_brondolan_kg: item.berat_brondolan_kg,
+          harga_brondolan_per_kg: item.harga_brondolan_per_kg,
+          pendapatan_brondolan: item.pendapatan_brondolan,
+          biaya_produksi: item.upah_panen,
           pendapatan: item.total_pendapatan,
           keterangan: JSON.stringify({
-            jumlah_janjang: item.jumlah_janjang,
             pembeli: item.pembeli,
             catatan: item.catatan,
           }),
@@ -951,8 +973,12 @@ export const dataService = {
     const totalLuasHa = kebunList.reduce((acc, k) => acc + (Number(k.luas_hektar) || 0), 0);
 
     const panenBulanIni = panenList.filter((p) => isSelectedMonth(p.tanggal));
-    const totalProduksiBulanIniKg = panenBulanIni.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
+    const totalProduksiBulanIniKg = panenBulanIni.reduce(
+      (acc, p) => acc + (Number(p.berat_bersih_kg) || 0) + (Number(p.berat_brondolan_kg) || 0),
+      0
+    );
     const totalPendapatanBulanIni = panenBulanIni.reduce((acc, p) => acc + (Number(p.total_pendapatan) || 0), 0);
+    const biayaPanenBulanIni = panenBulanIni.reduce((acc, p) => acc + (Number(p.upah_panen) || 0), 0);
 
     const perawatanBulanIni = perawatanList.filter((p) => isSelectedMonth(p.tanggal));
     const biayaPerawatanBulanIni = perawatanBulanIni.reduce((acc, p) => acc + (Number(p.total_biaya) || 0), 0);
@@ -960,7 +986,7 @@ export const dataService = {
     const pengeluaranLainBulanIni = pengeluaranLainList.filter((p) => isSelectedMonth(p.tanggal));
     const biayaLainBulanIni = pengeluaranLainBulanIni.reduce((acc, p) => acc + (Number(p.jumlah) || 0), 0);
 
-    const totalPengeluaranBulanIni = biayaPerawatanBulanIni + biayaLainBulanIni;
+    const totalPengeluaranBulanIni = biayaPerawatanBulanIni + biayaLainBulanIni + biayaPanenBulanIni;
     const labaBersihBulanIni = totalPendapatanBulanIni - totalPengeluaranBulanIni;
 
     return {

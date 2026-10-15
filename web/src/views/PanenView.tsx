@@ -50,11 +50,29 @@ export const PanenView: React.FC<PanenViewProps> = ({
   // Form State
   const [kebunId, setKebunId] = useState(preselectedKebunId || (kebunList[0]?.id || ''));
   const [tanggal, setTanggal] = useState(todayISO);
-  const [beratKg, setBeratKg] = useState('');
-  const [jumlahJanjang, setJumlahJanjang] = useState('');
+  const [beratKotor, setBeratKotor] = useState('');
+  const [beratBersih, setBeratBersih] = useState('');
+
   const [hargaPerKg, setHargaPerKg] = useState('2400');
+  const [beratBrondol, setBeratBrondol] = useState('');
+  const [hargaBrondol, setHargaBrondol] = useState('');
+  const [upahPanen, setUpahPanen] = useState('');
   const [pembeli, setPembeli] = useState('');
   const [catatan, setCatatan] = useState('');
+
+  const resetForm = () => {
+    setKebunId(preselectedKebunId || kebunList[0]?.id || '');
+    setTanggal(todayISO());
+    setBeratKotor('');
+    setBeratBersih('');
+
+    setHargaPerKg('2400');
+    setBeratBrondol('');
+    setHargaBrondol('');
+    setUpahPanen('');
+    setPembeli('');
+    setCatatan('');
+  };
 
   // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
   // reset form ke keadaan default untuk mode tambah. Menggunakan pola
@@ -63,13 +81,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
   if (isModalOpen !== prevModalOpen) {
     setPrevModalOpen(isModalOpen);
     if (isModalOpen && editingPanen === null) {
-      setKebunId(preselectedKebunId || kebunList[0]?.id || '');
-      setTanggal(todayISO());
-      setBeratKg('');
-      setJumlahJanjang('');
-      setHargaPerKg('2400');
-      setPembeli('');
-      setCatatan('');
+      resetForm();
     }
   }
 
@@ -97,18 +109,16 @@ export const PanenView: React.FC<PanenViewProps> = ({
     return true;
   });
 
-  const totalBeratFiltered = filteredPanen.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
+  const totalBeratFiltered = filteredPanen.reduce(
+    (acc, p) => acc + (Number(p.berat_bersih_kg) || 0) + (Number(p.berat_brondolan_kg) || 0),
+    0
+  );
   const totalPendapatanFiltered = filteredPanen.reduce((acc, p) => acc + (Number(p.total_pendapatan) || 0), 0);
+  const totalUpahFiltered = filteredPanen.reduce((acc, p) => acc + (Number(p.upah_panen) || 0), 0);
 
   const handleOpenAdd = () => {
     setEditingPanen(null);
-    setKebunId(preselectedKebunId || kebunList[0]?.id || '');
-    setTanggal(todayISO());
-    setBeratKg('');
-    setJumlahJanjang('');
-    setHargaPerKg('2400');
-    setPembeli('');
-    setCatatan('');
+    resetForm();
     onOpenModal();
   };
 
@@ -116,27 +126,38 @@ export const PanenView: React.FC<PanenViewProps> = ({
     setEditingPanen(panen);
     setKebunId(panen.kebun_id);
     setTanggal(panen.tanggal);
-    setBeratKg(panen.berat_kg.toString());
-    setJumlahJanjang((panen.jumlah_janjang || 0).toString());
+    setBeratKotor(panen.berat_kotor_kg ? panen.berat_kotor_kg.toString() : '');
+    setBeratBersih(panen.berat_bersih_kg ? panen.berat_bersih_kg.toString() : '');
+
     setHargaPerKg(panen.harga_per_kg.toString());
+    setBeratBrondol(panen.berat_brondolan_kg ? panen.berat_brondolan_kg.toString() : '');
+    setHargaBrondol(panen.harga_brondolan_per_kg ? panen.harga_brondolan_per_kg.toString() : '');
+    setUpahPanen(panen.upah_panen ? panen.upah_panen.toString() : '');
     setPembeli(panen.pembeli || '');
     setCatatan(panen.catatan || '');
     onOpenModal();
   };
 
-  const calculatedTotal = (parseFloat(beratKg) || 0) * (parseFloat(hargaPerKg) || 0);
+  const pendapatanTbs = (parseFloat(beratBersih) || 0) * (parseFloat(hargaPerKg) || 0);
+  const pendapatanBrondol = (parseFloat(beratBrondol) || 0) * (parseFloat(hargaBrondol) || 0);
+  const calculatedTotal = pendapatanTbs + pendapatanBrondol;
+  const calculatedLaba = calculatedTotal - (parseFloat(upahPanen) || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!kebunId || !beratKg || !hargaPerKg) return;
+    if (!kebunId || !beratBersih || !hargaPerKg) return;
 
     await onSavePanen({
       id: editingPanen ? editingPanen.id : undefined,
       kebun_id: kebunId,
       tanggal,
-      berat_kg: parseFloat(beratKg) || 0,
-      jumlah_janjang: parseInt(jumlahJanjang, 10) || 0,
+      berat_kotor_kg: parseFloat(beratKotor) || 0,
+      berat_bersih_kg: parseFloat(beratBersih) || 0,
       harga_per_kg: parseFloat(hargaPerKg) || 0,
+      berat_brondolan_kg: parseFloat(beratBrondol) || 0,
+      harga_brondolan_per_kg: parseFloat(hargaBrondol) || 0,
+      pendapatan_brondolan: pendapatanBrondol,
+      upah_panen: parseFloat(upahPanen) || 0,
       total_pendapatan: calculatedTotal,
       pembeli,
       catatan,
@@ -168,6 +189,18 @@ export const PanenView: React.FC<PanenViewProps> = ({
             <div className="stat-label" style={{ color: '#64748b' }}>Total Nilai Penjualan</div>
             <div className="num-stat" style={{ color: '#059669' }}>
               {formatRupiah(totalPendapatanFiltered)}
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(220, 38, 38, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Coins size={22} color="#dc2626" />
+          </div>
+          <div>
+            <div className="stat-label" style={{ color: '#64748b' }}>Total Upah Panen</div>
+            <div className="num-stat" style={{ color: '#b91c1c' }}>
+              {formatRupiah(totalUpahFiltered)}
             </div>
           </div>
         </div>
@@ -247,9 +280,10 @@ export const PanenView: React.FC<PanenViewProps> = ({
                   <tr>
                     <th>Tanggal</th>
                     <th>Kebun</th>
-                    <th>Berat TBS</th>
-                    <th>Janjang</th>
+                    <th>Berat Bersih / Kotor</th>
+                    <th>Brondol</th>
                     <th>Harga / Kg</th>
+                    <th>Upah Panen</th>
                     <th>Total Nilai</th>
                     <th>Pembeli / PKS</th>
                     <th style={{ textAlign: 'right' }}>Aksi</th>
@@ -263,10 +297,22 @@ export const PanenView: React.FC<PanenViewProps> = ({
                         <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
                       </td>
                       <td style={{ fontWeight: 700, color: '#0f172a' }}>
-                        {p.berat_kg.toLocaleString('id-ID')} Kg
+                        {p.berat_bersih_kg.toLocaleString('id-ID')} Kg
+                        {p.berat_kotor_kg > 0 && (
+                          <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>
+                            Kotor: {p.berat_kotor_kg.toLocaleString('id-ID')} Kg
+                          </span>
+                        )}
                       </td>
-                      <td>{p.jumlah_janjang > 0 ? `${p.jumlah_janjang} JJG` : '-'}</td>
+                      <td style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                        {p.berat_brondolan_kg > 0
+                          ? `${p.berat_brondolan_kg.toLocaleString('id-ID')} Kg @ Rp ${p.harga_brondolan_per_kg.toLocaleString('id-ID')}`
+                          : '-'}
+                      </td>
                       <td>Rp {p.harga_per_kg.toLocaleString('id-ID')}</td>
+                      <td style={{ color: '#b91c1c', fontWeight: 600 }}>
+                        {p.upah_panen > 0 ? formatRupiah(p.upah_panen) : '-'}
+                      </td>
                       <td style={{ fontWeight: 700, color: '#059669' }}>
                         {formatRupiah(p.total_pendapatan)}
                       </td>
@@ -344,14 +390,26 @@ export const PanenView: React.FC<PanenViewProps> = ({
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Berat Bersih</div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
-                        {p.berat_kg.toLocaleString('id-ID')} Kg
+                        {p.berat_bersih_kg.toLocaleString('id-ID')} Kg
                       </div>
+                      {p.berat_kotor_kg > 0 && (
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
+                          Kotor: {p.berat_kotor_kg.toLocaleString('id-ID')} Kg
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: '0.8rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
-                    <span>{p.jumlah_janjang > 0 ? `${p.jumlah_janjang} JJG` : '-'}</span>
                     <span>@ Rp {p.harga_per_kg.toLocaleString('id-ID')}/kg</span>
+                    {p.berat_brondolan_kg > 0 && (
+                      <span>
+                        Brondol: {p.berat_brondolan_kg.toLocaleString('id-ID')} Kg @ Rp {p.harga_brondolan_per_kg.toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {p.upah_panen > 0 && (
+                      <span style={{ color: '#b91c1c' }}>Upah: {formatRupiah(p.upah_panen)}</span>
+                    )}
                     <span>PKS: <strong style={{ color: '#334155' }}>{p.pembeli || '-'}</strong></span>
                   </div>
                 </div>
@@ -388,49 +446,50 @@ export const PanenView: React.FC<PanenViewProps> = ({
                 </select>
               </div>
 
+              <div className="form-group">
+                <label className="form-label" htmlFor="form-tanggal-panen">Tanggal Panen *</label>
+                <input
+                  id="form-tanggal-panen"
+                  type="date"
+                  className="form-input"
+                  value={tanggal}
+                  onChange={(e) => setTanggal(e.target.value)}
+                  required
+                />
+              </div>
+
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="form-tanggal-panen">Tanggal Panen *</label>
+                  <label className="form-label" htmlFor="form-berat-kotor-panen">Berat Kotor (Kg)</label>
                   <input
-                    id="form-tanggal-panen"
-                    type="date"
-                    className="form-input"
-                    value={tanggal}
-                    onChange={(e) => setTanggal(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="form-berat-panen">Total Berat (Kg) *</label>
-                  <input
-                    id="form-berat-panen"
+                    id="form-berat-kotor-panen"
                     type="number"
                     step="0.1"
                     min="0"
                     className="form-input"
-                    placeholder="Contoh: 2850"
-                    value={beratKg}
-                    onChange={(e) => setBeratKg(e.target.value)}
+                    placeholder="Timbangan awal, contoh: 3100"
+                    value={beratKotor}
+                    onChange={(e) => setBeratKotor(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="form-berat-bersih-panen">Berat Bersih (Kg) *</label>
+                  <input
+                    id="form-berat-bersih-panen"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="form-input"
+                    placeholder="Setelah potongan, contoh: 2850"
+                    value={beratBersih}
+                    onChange={(e) => setBeratBersih(e.target.value)}
                     required
                   />
                 </div>
               </div>
 
               <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="form-janjang-panen">Jumlah Janjang (JJG)</label>
-                  <input
-                    id="form-janjang-panen"
-                    type="number"
-                    min="0"
-                    className="form-input"
-                    placeholder="Contoh: 180"
-                    value={jumlahJanjang}
-                    onChange={(e) => setJumlahJanjang(e.target.value)}
-                  />
-                </div>
-
                 <div className="form-group">
                   <label className="form-label" htmlFor="form-harga-panen">Harga TBS per Kg (Rp) *</label>
                   <input
@@ -444,6 +503,53 @@ export const PanenView: React.FC<PanenViewProps> = ({
                     required
                   />
                 </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="form-upah-panen">Upah Panen (Rp)</label>
+                  <input
+                    id="form-upah-panen"
+                    type="number"
+                    min="0"
+                    className="form-input"
+                    placeholder="Contoh: 350000"
+                    value={upahPanen}
+                    onChange={(e) => setUpahPanen(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Brondol (Opsional) */}
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="form-brondol-panen">
+                    Berat Brondol (Kg) <span style={{ color: '#94a3b8', fontWeight: 500 }}>(opsional)</span>
+                  </label>
+                  <input
+                    id="form-brondol-panen"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="form-input"
+                    placeholder="Contoh: 120"
+                    value={beratBrondol}
+                    onChange={(e) => setBeratBrondol(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="form-harga-brondol-panen">
+                    Harga Brondol per Kg (Rp) <span style={{ color: '#94a3b8', fontWeight: 500 }}>(opsional)</span>
+                  </label>
+                  <input
+                    id="form-harga-brondol-panen"
+                    type="number"
+                    min="0"
+                    className="form-input"
+                    placeholder="Contoh: 1500"
+                    value={hargaBrondol}
+                    onChange={(e) => setHargaBrondol(e.target.value)}
+                  />
+                </div>
               </div>
 
               {/* Kalkulasi Otomatis Preview */}
@@ -455,14 +561,26 @@ export const PanenView: React.FC<PanenViewProps> = ({
                   border: '1px solid #a7f3d0',
                   marginBottom: 18,
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  flexDirection: 'column',
+                  gap: 6,
                 }}
               >
-                <span style={{ fontSize: '0.85rem', color: '#047857', fontWeight: 600 }}>Total Estimasi Pendapatan:</span>
-                <span className="num-modal" style={{ color: '#047857' }}>
-                  {formatRupiah(calculatedTotal)}
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#047857' }}>
+                  <span>Pendapatan TBS{beratBersih ? ` (${beratBersih} kg)` : ''}:</span>
+                  <strong>{formatRupiah(pendapatanTbs)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#047857' }}>
+                  <span>Pendapatan Brondol{beratBrondol ? ` (${beratBrondol} kg)` : ''}:</span>
+                  <strong>{formatRupiah(pendapatanBrondol)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #a7f3d0', paddingTop: 6, marginTop: 2 }}>
+                  <span style={{ fontSize: '0.85rem', color: '#047857', fontWeight: 600 }}>Total Pendapatan:</span>
+                  <span className="num-modal" style={{ color: '#047857' }}>{formatRupiah(calculatedTotal)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#0f172a' }}>
+                  <span>Estimasi Laba (setelah upah):</span>
+                  <strong style={{ color: calculatedLaba >= 0 ? '#047857' : '#b91c1c' }}>{formatRupiah(calculatedLaba)}</strong>
+                </div>
               </div>
 
               <div className="form-group">
