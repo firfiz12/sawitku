@@ -304,15 +304,13 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                         <div style={{ display: 'inline-flex', gap: 6 }}>
                           <button
                             className="btn btn-secondary btn-icon"
-                            style={{ width: 30, height: 30 }}
                             title="Edit"
                             onClick={() => handleOpenEdit(p)}
                           >
-                            <Edit2 size={13} />
+                            <Edit2 size={15} />
                           </button>
                           <button
                             className="btn btn-danger btn-icon"
-                            style={{ width: 30, height: 30 }}
                             title="Hapus"
                             onClick={() => {
                               if (window.confirm('Hapus catatan perawatan ini?')) {
@@ -320,7 +318,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                               }
                             }}
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
@@ -345,15 +343,13 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button
                         className="btn btn-secondary btn-icon"
-                        style={{ width: 38, height: 38 }}
                         title="Edit"
                         onClick={() => handleOpenEdit(p)}
                       >
-                        <Edit2 size={16} />
+                        <Edit2 size={16} strokeWidth={2.2} />
                       </button>
                       <button
                         className="btn btn-danger btn-icon"
-                        style={{ width: 38, height: 38 }}
                         title="Hapus"
                         onClick={() => {
                           if (window.confirm('Hapus catatan perawatan ini?')) {
@@ -361,7 +357,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                           }
                         }}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={16} strokeWidth={2.2} />
                       </button>
                     </div>
                   </div>

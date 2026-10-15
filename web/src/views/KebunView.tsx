@@ -311,7 +311,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
                     title="Edit Kebun"
                     onClick={() => handleOpenEdit(kebun)}
                   >
-                    <Edit2 size={15} />
+                    <Edit2 size={16} strokeWidth={2.2} />
                   </button>
                   <button
                     className="btn btn-danger btn-icon"
@@ -322,7 +322,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
                       }
                     }}
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={16} strokeWidth={2.2} />
                   </button>
                 </div>
               </div>
