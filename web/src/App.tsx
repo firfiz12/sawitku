@@ -22,6 +22,7 @@ import type {
 } from './types';
 
 import { useTableUndoRedo } from './hooks/useTableUndoRedo';
+import { useHarvestNotification } from './hooks/useHarvestNotification';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
@@ -144,6 +145,10 @@ export const App: React.FC = () => {
   const pengingatList = useMemo(() => {
     return dataService.calculatePengingatPanen(kebunList, panenList);
   }, [kebunList, panenList]);
+
+  // PWA / Browser Notifications untuk panen terlambat
+  const { permission: notifPermission, requestPermission: requestNotifPermission } =
+    useHarvestNotification(pengingatList);
 
   // Computed: Stats
   const stats = useMemo(() => {
@@ -293,6 +298,8 @@ export const App: React.FC = () => {
           onQuickAddKebun={handleOpenKebunModal}
           dbStatus={dbStatus}
           onOpenDbStatus={() => setIsDbStatusModalOpen(true)}
+          notifPermission={notifPermission}
+          onRequestNotif={requestNotifPermission}
         />
 
         <main className="content-body">

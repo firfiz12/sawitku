@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Sprout, Trees, Database } from 'lucide-react';
+import { Menu, Sprout, Trees, Database, Bell, BellOff } from 'lucide-react';
 import type { NavTab } from './Sidebar';
 import type { DatabaseStatus } from '../services/dataService';
 
@@ -10,6 +10,8 @@ interface TopBarProps {
   onQuickAddKebun: () => void;
   dbStatus: DatabaseStatus | null;
   onOpenDbStatus: () => void;
+  notifPermission?: NotificationPermission;
+  onRequestNotif?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -19,6 +21,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onQuickAddKebun,
   dbStatus,
   onOpenDbStatus,
+  notifPermission,
+  onRequestNotif,
 }) => {
   const titles: Record<NavTab, string> = {
     dashboard: 'Dashboard',
@@ -28,6 +32,8 @@ export const TopBar: React.FC<TopBarProps> = ({
     'pengeluaran-lain': 'Pengeluaran Lain',
     laporan: 'Laporan Keuangan',
   };
+
+  const notifSupported = typeof Notification !== 'undefined';
 
   return (
     <header className="top-bar">
@@ -51,6 +57,51 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="top-bar-actions">
+        {/* Notification Bell */}
+        {notifSupported && notifPermission !== 'granted' && onRequestNotif && (
+          <button
+            id="btn-enable-notif"
+            className="btn btn-secondary topbar-quick"
+            style={{ padding: '8px 10px', fontSize: '0.82rem', gap: 6 }}
+            onClick={onRequestNotif}
+            title={
+              notifPermission === 'denied'
+                ? 'Notifikasi diblokir browser. Aktifkan via pengaturan browser.'
+                : 'Aktifkan notifikasi pengingat panen'
+            }
+          >
+            {notifPermission === 'denied' ? (
+              <BellOff size={16} color="#dc2626" />
+            ) : (
+              <Bell size={16} color="#d97706" />
+            )}
+            <span className="hidden-mobile" style={{ whiteSpace: 'nowrap' }}>
+              {notifPermission === 'denied' ? 'Notif Diblokir' : 'Aktifkan Notif'}
+            </span>
+          </button>
+        )}
+
+        {notifSupported && notifPermission === 'granted' && (
+          <span
+            title="Notifikasi pengingat panen aktif"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              fontSize: '0.78rem',
+              color: '#059669',
+              fontWeight: 600,
+              padding: '6px 10px',
+              background: 'rgba(5,150,105,0.08)',
+              borderRadius: 8,
+              border: '1px solid rgba(5,150,105,0.2)',
+            }}
+          >
+            <Bell size={14} color="#059669" />
+            <span className="hidden-mobile">Notif Aktif</span>
+          </span>
+        )}
+
         {/* Database Status Button */}
         <button
           id="btn-topbar-db"

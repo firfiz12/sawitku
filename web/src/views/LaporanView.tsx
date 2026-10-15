@@ -135,7 +135,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     };
   });
 
-  // Monthly Aggregations for 6 Months Chart
+  // Monthly Aggregations for 6 Months Chart — mengikuti filter kebun
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   const monthlyData: { label: string; yearMonth: string; tbsKg: number; pendapatan: number; pengeluaran: number }[] = [];
 
@@ -144,9 +144,10 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     const ym = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}`;
     const label = `${months[target.getMonth()]} '${String(target.getFullYear()).slice(-2)}`;
 
-    const pBulan = panenList.filter((p) => p.tanggal.startsWith(ym));
-    const pwBulan = perawatanList.filter((p) => p.tanggal.startsWith(ym));
-    const plBulan = pengeluaranLainList.filter((p) => p.tanggal.startsWith(ym));
+    // Gunakan data yang sudah difilter kebun (bukan raw list)
+    const pBulan = filteredPanen.filter((p) => p.tanggal.startsWith(ym));
+    const pwBulan = filteredPerawatan.filter((p) => p.tanggal.startsWith(ym));
+    const plBulan = filteredPengeluaranLain.filter((p) => p.tanggal.startsWith(ym));
 
     const tbsKg = pBulan.reduce(
       (acc, p) => acc + (Number(p.berat_bersih_kg) || 0) + (Number(p.berat_brondolan_kg) || 0),
@@ -162,6 +163,35 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   }
 
   const maxTbs = Math.max(...monthlyData.map((m) => m.tbsKg), 1000);
+
+  // ── SVG Pie Chart helpers ──────────────────────────────────────────────────
+  const pieSlices = [
+    { label: 'Perawatan Kebun', value: totalBiayaPerawatan, color: '#0284c7' },
+    { label: 'Pengeluaran Lain', value: totalPengeluaranLain, color: '#d97706' },
+    { label: 'Upah Panen', value: totalBiayaPanen, color: '#dc2626' },
+  ].filter((s) => s.value > 0);
+
+  const computePieCoords = (slices: typeof pieSlices) => {
+    let cumAngle = -Math.PI / 2; // mulai dari atas
+    return slices.map((s) => {
+      const pct = totalPengeluaran > 0 ? s.value / totalPengeluaran : 0;
+      const startAngle = cumAngle;
+      const sweep = pct * 2 * Math.PI;
+      cumAngle += sweep;
+      const endAngle = cumAngle;
+      const cx = 90, cy = 90, r = 72;
+      const x1 = cx + r * Math.cos(startAngle);
+      const y1 = cy + r * Math.sin(startAngle);
+      const x2 = cx + r * Math.cos(endAngle);
+      const y2 = cy + r * Math.sin(endAngle);
+      const largeArc = sweep > Math.PI ? 1 : 0;
+      const path = pct >= 0.9999
+        ? `M ${cx} ${cy} m 0 ${-r} a ${r} ${r} 0 1 1 -0.001 0 Z`
+        : `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      return { ...s, pct, path };
+    });
+  };
+  const pieData = computePieCoords(pieSlices);
 
   // CSV Export
   const handleExportCSV = () => {
@@ -389,7 +419,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           </div>
         </div>
 
-        {/* Breakdown Pengeluaran */}
+        {/* Pie Chart Alokasi Biaya */}
         <div className="card">
           <div className="card-header">
             <div>
@@ -398,73 +428,91 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
-                <span style={{ color: '#1e293b', fontWeight: 600 }}>Perawatan Kebun</span>
-                <span style={{ fontWeight: 700, color: '#0284c7' }}>{formatRupiah(totalBiayaPerawatan)}</span>
-              </div>
-              <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                <div
-                  style={{
-                    height: '100%',
-                    background: '#0284c7',
-                    width: `${totalPengeluaran > 0 ? (totalBiayaPerawatan / totalPengeluaran) * 100 : 0}%`,
-                  }}
-                />
-              </div>
+          {totalPengeluaran === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: '0.88rem' }}>
+              Belum ada data pengeluaran pada periode ini.
             </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+              {/* SVG Pie Chart */}
+              <div style={{ position: 'relative', width: 180, height: 180 }}>
+                <svg viewBox="0 0 180 180" width="180" height="180">
+                  {pieData.map((slice, i) => (
+                    <path
+                      key={i}
+                      d={slice.path}
+                      fill={slice.color}
+                      stroke="#fff"
+                      strokeWidth={2.5}
+                      style={{ transition: 'opacity 0.2s' }}
+                    >
+                      <title>{slice.label}: {formatRupiah(slice.value)} ({(slice.pct * 100).toFixed(1)}%)</title>
+                    </path>
+                  ))}
+                  {/* Center label */}
+                  <text
+                    x="90"
+                    y="86"
+                    textAnchor="middle"
+                    style={{ fontSize: '10px', fill: '#64748b', fontWeight: 600 }}
+                  >
+                    Total
+                  </text>
+                  <text
+                    x="90"
+                    y="100"
+                    textAnchor="middle"
+                    style={{ fontSize: '9px', fill: '#0f172a', fontWeight: 800 }}
+                  >
+                    {formatRupiah(totalPengeluaran).replace('Rp\u00a0', 'Rp ')}
+                  </text>
+                </svg>
+              </div>
 
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
-                <span style={{ color: '#1e293b', fontWeight: 600 }}>Pengeluaran Lain</span>
-                <span style={{ fontWeight: 700, color: '#d97706' }}>{formatRupiah(totalPengeluaranLain)}</span>
+              {/* Legend Table */}
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pieData.map((slice, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 4,
+                        background: slice.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.83rem', fontWeight: 600, color: '#1e293b' }}>{slice.label}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{(slice.pct * 100).toFixed(1)}% dari total pengeluaran</div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: slice.color, textAlign: 'right', flexShrink: 0 }}>
+                      {formatRupiah(slice.value)}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                <div
-                  style={{
-                    height: '100%',
-                    background: '#d97706',
-                    width: `${totalPengeluaran > 0 ? (totalPengeluaranLain / totalPengeluaran) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
 
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
-                <span style={{ color: '#1e293b', fontWeight: 600 }}>Upah Panen</span>
-                <span style={{ fontWeight: 700, color: '#dc2626' }}>{formatRupiah(totalBiayaPanen)}</span>
-              </div>
-              <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                <div
-                  style={{
-                    height: '100%',
-                    background: '#dc2626',
-                    width: `${totalPengeluaran > 0 ? (totalBiayaPanen / totalPengeluaran) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 20,
-                padding: '16px',
-                borderRadius: 12,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-              }}
-            >
-              <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
-                Rata-rata Harga Jual TBS Periode Ini:
-              </div>
-              <div className="num-xl" style={{ color: '#0f172a', marginTop: 4 }}>
-                Rp {totalBeratBersih > 0 ? Math.round(pendapatanTbs / totalBeratBersih).toLocaleString('id-ID') : 0}{' '}
-                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>/ Kg TBS</span>
+              {/* Rata-rata Harga TBS */}
+              <div
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
+                  Rata-rata Harga Jual TBS Periode Ini:
+                </div>
+                <div className="num-xl" style={{ color: '#0f172a', marginTop: 4 }}>
+                  Rp {totalBeratBersih > 0 ? Math.round(pendapatanTbs / totalBeratBersih).toLocaleString('id-ID') : 0}{' '}
+                  <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>/ Kg TBS</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
