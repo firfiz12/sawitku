@@ -276,12 +276,13 @@ async function syncPending(): Promise<number> {
   for (const op of ops) {
     try {
       if (op.kind === 'upsert' && op.payload) {
-        await supabase.from(op.table).upsert(op.payload);
+        await supabase.from(op.table).upsert(op.payload).throwOnError();
       } else if (op.kind === 'delete') {
         await supabase
           .from(op.table)
           .update({ is_deleted: true, updated_at: new Date().toISOString() })
-          .eq('id', op.id);
+          .eq('id', op.id)
+          .throwOnError();
       }
     } catch (err) {
       remaining.push(op);
@@ -480,7 +481,7 @@ export const dataService = {
           return item;
         }
         try {
-          await supabase.from('kebun').upsert(dbRow);
+          await supabase.from('kebun').upsert(dbRow).throwOnError();
           removePending('kebun', id);
         } catch (err) {
           console.warn('Supabase upsert kebun error (masuk antrian):', err);
@@ -506,7 +507,8 @@ export const dataService = {
           await supabase
             .from('kebun')
             .update({ is_deleted: true, updated_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('id', id)
+            .throwOnError();
           removePending('kebun', id);
         } catch (err) {
           console.warn('Supabase delete kebun error (masuk antrian):', err);
@@ -607,7 +609,7 @@ export const dataService = {
           return item;
         }
         try {
-          await supabase.from('panen').upsert(dbRow);
+          await supabase.from('panen').upsert(dbRow).throwOnError();
           removePending('panen', id);
         } catch (err) {
           console.warn('Supabase upsert panen error (masuk antrian):', err);
@@ -633,7 +635,8 @@ export const dataService = {
           await supabase
             .from('panen')
             .update({ is_deleted: true, updated_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('id', id)
+            .throwOnError();
           removePending('panen', id);
         } catch (err) {
           console.warn('Supabase delete panen error (masuk antrian):', err);
@@ -736,7 +739,7 @@ export const dataService = {
           return item;
         }
         try {
-          await supabase.from('perawatan').upsert(dbRow);
+          await supabase.from('perawatan').upsert(dbRow).throwOnError();
           removePending('perawatan', id);
         } catch (err) {
           console.warn('Supabase upsert perawatan error (masuk antrian):', err);
@@ -762,7 +765,8 @@ export const dataService = {
           await supabase
             .from('perawatan')
             .update({ is_deleted: true, updated_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('id', id)
+            .throwOnError();
           removePending('perawatan', id);
         } catch (err) {
           console.warn('Supabase delete perawatan error (masuk antrian):', err);
@@ -844,7 +848,7 @@ export const dataService = {
           return entry;
         }
         try {
-          await supabase.from('pengeluaran_lain').upsert(dbRow);
+          await supabase.from('pengeluaran_lain').upsert(dbRow).throwOnError();
           removePending('pengeluaran_lain', id);
         } catch (err) {
           console.warn('Supabase upsert pengeluaran_lain error (masuk antrian):', err);
@@ -870,7 +874,8 @@ export const dataService = {
           await supabase
             .from('pengeluaran_lain')
             .update({ is_deleted: true, updated_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('id', id)
+            .throwOnError();
           removePending('pengeluaran_lain', id);
         } catch (err) {
           console.warn('Supabase delete pengeluaran_lain error (masuk antrian):', err);

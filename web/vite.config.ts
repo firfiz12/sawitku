@@ -11,6 +11,19 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
     },
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: 'vendor-supabase', test: /node_modules[\\/]@supabase[\\/]/ },
+              { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+              { name: 'vendor-icons', test: /node_modules[\\/]lucide-react[\\/]/ },
+            ],
+          },
+        },
+      },
+    },
     plugins: [
       react(),
       VitePWA({

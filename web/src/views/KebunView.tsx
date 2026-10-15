@@ -13,6 +13,7 @@ import {
 import type { Kebun } from '../types';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { UndoRedoButtons } from '../components/UndoRedoButtons';
+import { currentYear } from '../lib/date';
 import {
   getProvinsi,
   getKabupaten,
@@ -56,7 +57,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
   const [nama, setNama] = useState('');
   const [luasHektar, setLuasHektar] = useState('');
   const [lokasi, setLokasi] = useState('');
-  const [tahunTanam, setTahunTanam] = useState(new Date().getFullYear().toString());
+  const [tahunTanam, setTahunTanam] = useState(currentYear);
   const [jumlahPohon, setJumlahPohon] = useState('');
   const [varietas, setVarietas] = useState('Tenera');
   const [rotasiPanenHari, setRotasiPanenHari] = useState('14');
@@ -88,12 +89,8 @@ export const KebunView: React.FC<KebunViewProps> = ({
 
   // Muat daftar provinsi saat modal dibuka
   useEffect(() => {
-    if (!isModalOpen) {
-      resetLocationState();
-      return;
-    }
+    if (!isModalOpen) return;
     let alive = true;
-    setWilayahLoading(true);
     getProvinsi().then((list) => {
       if (!alive) return;
       setProvinceList(list);
@@ -173,19 +170,26 @@ export const KebunView: React.FC<KebunViewProps> = ({
 
   // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
   // reset form ke keadaan default untuk mode tambah.
-  useEffect(() => {
-    if (!isModalOpen || editingKebun !== null) return;
-    setNama('');
-    setLuasHektar('');
-    setLokasi('');
-    setTahunTanam(new Date().getFullYear().toString());
-    setJumlahPohon('');
-    setVarietas('Tenera');
-    setRotasiPanenHari('14');
-  }, [isModalOpen, editingKebun]);
+  const [prevModalOpen, setPrevModalOpen] = useState(isModalOpen);
+  if (isModalOpen !== prevModalOpen) {
+    setPrevModalOpen(isModalOpen);
+    if (isModalOpen) {
+      setWilayahLoading(true);
+    }
+    if (isModalOpen && editingKebun === null) {
+      setNama('');
+      setLuasHektar('');
+      setLokasi('');
+      setTahunTanam(currentYear());
+      setJumlahPohon('');
+      setVarietas('Tenera');
+      setRotasiPanenHari('14');
+    }
+  }
 
   const closeModal = () => {
     setEditingKebun(null);
+    resetLocationState();
     onCloseModal();
   };
 
@@ -200,7 +204,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
     setNama('');
     setLuasHektar('');
     setLokasi('');
-    setTahunTanam(new Date().getFullYear().toString());
+    setTahunTanam(currentYear());
     setJumlahPohon('');
     setVarietas('Tenera');
     setRotasiPanenHari('14');
@@ -230,7 +234,7 @@ export const KebunView: React.FC<KebunViewProps> = ({
       nama,
       luas_hektar: parseFloat(luasHektar) || 0,
       lokasi,
-      tahun_tanam: parseInt(tahunTanam, 10) || new Date().getFullYear(),
+      tahun_tanam: parseInt(tahunTanam, 10) || Number(currentYear()),
       jumlah_pohon: parseInt(jumlahPohon, 10) || 0,
       varietas,
       rotasi_panen_hari: parseInt(rotasiPanenHari, 10) || 14,

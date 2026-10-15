@@ -124,8 +124,10 @@ export const App: React.FC = () => {
   // Isolasi storage per-akun & muat data setiap sesi berubah
   useEffect(() => {
     setCurrentUser(userId);
-    loadAllData();
-    refreshDbStatus();
+    (async () => {
+      await loadAllData();
+      await refreshDbStatus();
+    })();
 
     // Koneksi kembali online → kirim semua perubahan yang tertunda lalu muat ulang
     const handleOnline = () => {

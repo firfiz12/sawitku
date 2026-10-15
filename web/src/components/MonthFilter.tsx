@@ -1,5 +1,6 @@
 import React from 'react';
 import { CalendarDays, X } from 'lucide-react';
+import { currentYearMonth } from '../lib/date';
 
 interface MonthFilterProps {
   value: string; // YYYY-MM, kosong = semua bulan
@@ -18,8 +19,6 @@ export const MonthFilter: React.FC<MonthFilterProps> = ({
   id,
   showConvenience = true,
 }) => {
-  const currentMonth = new Date().toISOString().slice(0, 7);
-
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -51,7 +50,7 @@ export const MonthFilter: React.FC<MonthFilterProps> = ({
           <button
             className="btn btn-secondary filter-control"
             style={{ padding: '6px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-            onClick={() => onChange(currentMonth)}
+            onClick={() => onChange(currentYearMonth())}
             title="Pilih bulan berjalan"
             type="button"
           >

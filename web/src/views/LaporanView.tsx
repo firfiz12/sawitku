@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { Kebun, Panen, Perawatan, PengeluaranLain } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
+import { todayISO } from '../lib/date';
 
 interface LaporanViewProps {
   kebunList: Kebun[];
@@ -27,7 +28,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   const [selectedYearMonth, setSelectedYearMonth] = useState<string>(''); // YYYY-MM, lebih spesifik dari pill periode
   const [filterKebunId, setFilterKebunId] = useState<string>('all');
 
-  const now = new Date();
+  const [now] = useState(() => new Date());
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
@@ -149,7 +150,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Laporan_SawitKu_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Laporan_SawitKu_${todayISO()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

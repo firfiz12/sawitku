@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Download, WifiOff, X, RefreshCw } from 'lucide-react';
 import { registerSW } from 'virtual:pwa-register';
 
@@ -9,11 +9,15 @@ interface BeforeInstallPromptEvent extends Event {
 
 export const PwaBanner: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(
+    () =>
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  );
   const [isDismissed, setIsDismissed] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [needRefresh, setNeedRefresh] = useState(false);
-  const [updateSW, setUpdateSW] = useState<(() => Promise<void>) | null>(null);
+  const updateSWRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     // 1. Setup Service Worker Register & Auto/Prompt Update
@@ -25,7 +29,7 @@ export const PwaBanner: React.FC = () => {
         console.log('SawitKu siap dijalankan secara offline');
       },
     });
-    setUpdateSW(() => reload);
+    updateSWRef.current = reload;
 
     // 2. Listen to online/offline events
     const handleOnline = () => setIsOffline(false);
@@ -48,11 +52,6 @@ export const PwaBanner: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Check if already in standalone mode
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as unknown as { standalone?: boolean }).standalone) {
-      setIsInstalled(true);
-    }
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -72,9 +71,7 @@ export const PwaBanner: React.FC = () => {
   };
 
   const handleUpdateClick = () => {
-    if (updateSW) {
-      updateSW();
-    }
+    updateSWRef.current?.();
   };
 
   return (

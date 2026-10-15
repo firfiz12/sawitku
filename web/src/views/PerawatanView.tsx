@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Wrench,
   Plus,
@@ -11,6 +11,7 @@ import {
 import type { Perawatan, Kebun } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
 import { UndoRedoButtons } from '../components/UndoRedoButtons';
+import { todayISO } from '../lib/date';
 
 interface PerawatanViewProps {
   perawatanList: Perawatan[];
@@ -46,7 +47,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
 
   // Form State
   const [kebunId, setKebunId] = useState(kebunList[0]?.id || '');
-  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [tanggal, setTanggal] = useState(todayISO);
   const [jenisPerawatan, setJenisPerawatan] = useState('Pemupukan');
   const [namaBahan, setNamaBahan] = useState('');
   const [dosis, setDosis] = useState('');
@@ -56,17 +57,20 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
 
   // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
   // reset form ke keadaan default untuk mode tambah.
-  useEffect(() => {
-    if (!isModalOpen || editingPerawatan !== null) return;
-    setKebunId(kebunList[0]?.id || '');
-    setTanggal(new Date().toISOString().split('T')[0]);
-    setJenisPerawatan('Pemupukan');
-    setNamaBahan('');
-    setDosis('');
-    setBiayaTenaga('');
-    setBiayaBahan('');
-    setCatatan('');
-  }, [isModalOpen, editingPerawatan, kebunList]);
+  const [prevModalOpen, setPrevModalOpen] = useState(isModalOpen);
+  if (isModalOpen !== prevModalOpen) {
+    setPrevModalOpen(isModalOpen);
+    if (isModalOpen && editingPerawatan === null) {
+      setKebunId(kebunList[0]?.id || '');
+      setTanggal(todayISO());
+      setJenisPerawatan('Pemupukan');
+      setNamaBahan('');
+      setDosis('');
+      setBiayaTenaga('');
+      setBiayaBahan('');
+      setCatatan('');
+    }
+  }
 
   const closeModal = () => {
     setEditingPerawatan(null);
@@ -108,7 +112,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
   const handleOpenAdd = () => {
     setEditingPerawatan(null);
     setKebunId(kebunList[0]?.id || '');
-    setTanggal(new Date().toISOString().split('T')[0]);
+    setTanggal(todayISO());
     setJenisPerawatan('Pemupukan');
     setNamaBahan('');
     setDosis('');

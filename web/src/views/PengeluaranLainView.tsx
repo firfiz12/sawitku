@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Receipt,
   Plus,
@@ -11,6 +11,7 @@ import {
 import type { PengeluaranLain } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
 import { UndoRedoButtons } from '../components/UndoRedoButtons';
+import { todayISO } from '../lib/date';
 
 interface PengeluaranLainViewProps {
   pengeluaranList: PengeluaranLain[];
@@ -43,19 +44,22 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
 
   // Form State
   const [kategori, setKategori] = useState('Alat & Mesin');
-  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [tanggal, setTanggal] = useState(todayISO);
   const [jumlah, setJumlah] = useState('');
   const [keterangan, setKeterangan] = useState('');
 
   // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
   // reset form ke keadaan default untuk mode tambah.
-  useEffect(() => {
-    if (!isModalOpen || editingItem !== null) return;
-    setKategori('Alat & Mesin');
-    setTanggal(new Date().toISOString().split('T')[0]);
-    setJumlah('');
-    setKeterangan('');
-  }, [isModalOpen, editingItem]);
+  const [prevModalOpen, setPrevModalOpen] = useState(isModalOpen);
+  if (isModalOpen !== prevModalOpen) {
+    setPrevModalOpen(isModalOpen);
+    if (isModalOpen && editingItem === null) {
+      setKategori('Alat & Mesin');
+      setTanggal(todayISO());
+      setJumlah('');
+      setKeterangan('');
+    }
+  }
 
   const closeModal = () => {
     setEditingItem(null);
@@ -91,7 +95,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
   const handleOpenAdd = () => {
     setEditingItem(null);
     setKategori('Alat & Mesin');
-    setTanggal(new Date().toISOString().split('T')[0]);
+    setTanggal(todayISO());
     setJumlah('');
     setKeterangan('');
     onOpenModal();

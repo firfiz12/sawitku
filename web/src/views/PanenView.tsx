@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Sprout,
   Plus,
@@ -12,6 +12,7 @@ import {
 import type { Panen, Kebun } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
 import { UndoRedoButtons } from '../components/UndoRedoButtons';
+import { todayISO } from '../lib/date';
 
 interface PanenViewProps {
   panenList: Panen[];
@@ -48,7 +49,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
 
   // Form State
   const [kebunId, setKebunId] = useState(preselectedKebunId || (kebunList[0]?.id || ''));
-  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [tanggal, setTanggal] = useState(todayISO);
   const [beratKg, setBeratKg] = useState('');
   const [jumlahJanjang, setJumlahJanjang] = useState('');
   const [hargaPerKg, setHargaPerKg] = useState('2400');
@@ -56,17 +57,21 @@ export const PanenView: React.FC<PanenViewProps> = ({
   const [catatan, setCatatan] = useState('');
 
   // Saat modal dibuka dari luar (mis. aksi cepat di Dashboard/TopBar),
-  // reset form ke keadaan default untuk mode tambah.
-  useEffect(() => {
-    if (!isModalOpen || editingPanen !== null) return;
-    setKebunId(preselectedKebunId || kebunList[0]?.id || '');
-    setTanggal(new Date().toISOString().split('T')[0]);
-    setBeratKg('');
-    setJumlahJanjang('');
-    setHargaPerKg('2400');
-    setPembeli('');
-    setCatatan('');
-  }, [isModalOpen, editingPanen, preselectedKebunId, kebunList]);
+  // reset form ke keadaan default untuk mode tambah. Menggunakan pola
+  // "adjust state when prop changes" agar tidak memicu render berantai.
+  const [prevModalOpen, setPrevModalOpen] = useState(isModalOpen);
+  if (isModalOpen !== prevModalOpen) {
+    setPrevModalOpen(isModalOpen);
+    if (isModalOpen && editingPanen === null) {
+      setKebunId(preselectedKebunId || kebunList[0]?.id || '');
+      setTanggal(todayISO());
+      setBeratKg('');
+      setJumlahJanjang('');
+      setHargaPerKg('2400');
+      setPembeli('');
+      setCatatan('');
+    }
+  }
 
   const closeModal = () => {
     setEditingPanen(null);
@@ -98,7 +103,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
   const handleOpenAdd = () => {
     setEditingPanen(null);
     setKebunId(preselectedKebunId || kebunList[0]?.id || '');
-    setTanggal(new Date().toISOString().split('T')[0]);
+    setTanggal(todayISO());
     setBeratKg('');
     setJumlahJanjang('');
     setHargaPerKg('2400');
