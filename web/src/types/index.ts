@@ -25,7 +25,6 @@ export interface Panen {
   tanggal: string; // YYYY-MM-DD
   berat_kotor_kg: number;
   berat_bersih_kg: number;
-  jumlah_janjang: number;
   harga_per_kg: number;
   berat_brondolan_kg: number;
   harga_brondolan_per_kg: number;
