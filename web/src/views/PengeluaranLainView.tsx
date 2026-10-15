@@ -247,15 +247,13 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                         <div style={{ display: 'inline-flex', gap: 6 }}>
                           <button
                             className="btn btn-secondary btn-icon"
-                            style={{ width: 30, height: 30 }}
                             title="Edit"
                             onClick={() => handleOpenEdit(item)}
                           >
-                            <Edit2 size={13} />
+                            <Edit2 size={15} />
                           </button>
                           <button
                             className="btn btn-danger btn-icon"
-                            style={{ width: 30, height: 30 }}
                             title="Hapus"
                             onClick={() => {
                               if (window.confirm('Hapus catatan pengeluaran ini?')) {
@@ -263,7 +261,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                               }
                             }}
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
@@ -285,15 +283,13 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                     <div style={{ display: 'inline-flex', gap: 6 }}>
                       <button
                         className="btn btn-secondary btn-icon"
-                        style={{ width: 34, height: 34 }}
                         title="Edit"
                         onClick={() => handleOpenEdit(item)}
                       >
-                        <Edit2 size={14} />
+                        <Edit2 size={15} />
                       </button>
                       <button
                         className="btn btn-danger btn-icon"
-                        style={{ width: 34, height: 34 }}
                         title="Hapus"
                         onClick={() => {
                           if (window.confirm('Hapus catatan pengeluaran ini?')) {
@@ -301,7 +297,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                           }
                         }}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </div>
