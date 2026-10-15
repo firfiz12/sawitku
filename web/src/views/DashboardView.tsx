@@ -55,6 +55,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenKebunModal,
 }) => {
   const [filterKebunId, setFilterKebunId] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all'); // 'all' atau 'YYYY'
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -69,29 +70,62 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return k ? k.nama : 'Kebun';
   };
 
-  const monthLabel = dashboardMonth
+  // Daftar tahun yang tersedia dari data riwayat
+  const availableYears = useMemo(() => {
+    const currentY = new Date().getFullYear();
+    const yearSet = new Set<number>([currentY]);
+    recentPanen.forEach((p) => {
+      if (p.tanggal) {
+        const y = parseInt(p.tanggal.slice(0, 4), 10);
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    perawatanList.forEach((p) => {
+      if (p.tanggal) {
+        const y = parseInt(p.tanggal.slice(0, 4), 10);
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    pengeluaranLainList.forEach((p) => {
+      if (p.tanggal) {
+        const y = parseInt(p.tanggal.slice(0, 4), 10);
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [recentPanen, perawatanList, pengeluaranLainList]);
+
+  const periodLabel = dashboardMonth
     ? (() => {
         const [y, m] = dashboardMonth.split('-').map(Number);
         const names = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         return `${names[(m || 1) - 1]} ${y}`;
       })()
+    : selectedYear !== 'all'
+    ? `Tahun ${selectedYear}`
     : 'Semua Riwayat (Akumulasi)';
 
-  // Stats yang dihitung berdasarkan filter kebun
+  // Stats yang dihitung berdasarkan filter kebun dan periode
   const effectiveStats = useMemo(() => {
-    if (filterKebunId === 'all') return stats;
-    const filteredKebun = kebunList.filter((k) => k.id === filterKebunId);
-    const filteredPanen = recentPanen.filter((p) => p.kebun_id === filterKebunId);
-    const filteredPerawatan = perawatanList.filter((p) => p.kebun_id === filterKebunId);
-    const filteredPengeluaranLain = pengeluaranLainList.filter((pl) => pl.kebun_id === filterKebunId);
+    if (filterKebunId === 'all' && !dashboardMonth && selectedYear === 'all') {
+      return stats;
+    }
+    const filteredKebun = filterKebunId === 'all' ? kebunList : kebunList.filter((k) => k.id === filterKebunId);
+    const filteredPanen = filterKebunId === 'all' ? recentPanen : recentPanen.filter((p) => p.kebun_id === filterKebunId);
+    const filteredPerawatan = filterKebunId === 'all' ? perawatanList : perawatanList.filter((p) => p.kebun_id === filterKebunId);
+    const filteredPengeluaranLain = filterKebunId === 'all' ? pengeluaranLainList : pengeluaranLainList.filter((pl) => pl.kebun_id === filterKebunId);
+
+    // Filter periode: bulan spesifik jika ada, atau tahun tertentu, atau keseluruhan
+    const periodParam = dashboardMonth ? dashboardMonth : (selectedYear !== 'all' ? selectedYear : undefined);
+
     return dataService.calculateStats(
       filteredKebun,
       filteredPanen,
       filteredPerawatan,
       filteredPengeluaranLain,
-      dashboardMonth || undefined
+      periodParam
     );
-  }, [filterKebunId, stats, kebunList, recentPanen, perawatanList, pengeluaranLainList, dashboardMonth]);
+  }, [filterKebunId, stats, kebunList, recentPanen, perawatanList, pengeluaranLainList, dashboardMonth, selectedYear]);
 
   const filteredPengingat = useMemo(() => {
     if (filterKebunId === 'all') return pengingatList;
@@ -172,11 +206,56 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </select>
           </div>
 
-          <MonthFilter id="filter-month-dashboard" value={dashboardMonth} onChange={onDashboardMonthChange} />
+          <select
+            id="filter-tahun-dashboard"
+            className="form-select filter-control"
+            style={{ width: 'auto', minWidth: 0 }}
+            value={selectedYear}
+            onChange={(e) => {
+              const y = e.target.value;
+              setSelectedYear(y);
+              if (y === 'all') {
+                onDashboardMonthChange('');
+              } else if (dashboardMonth && !dashboardMonth.startsWith(y)) {
+                onDashboardMonthChange('');
+              }
+            }}
+            title="Filter Tahun"
+          >
+            <option value="all">Semua Tahun</option>
+            {availableYears.map((yr) => (
+              <option key={yr} value={String(yr)}>Tahun {yr}</option>
+            ))}
+          </select>
+
+          <MonthFilter
+            id="filter-month-dashboard"
+            value={dashboardMonth}
+            onChange={(ym) => {
+              onDashboardMonthChange(ym);
+              if (ym) {
+                setSelectedYear(ym.slice(0, 4));
+              }
+            }}
+          />
+
+          {(filterKebunId !== 'all' || selectedYear !== 'all' || dashboardMonth !== '') && (
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+              onClick={() => {
+                setFilterKebunId('all');
+                setSelectedYear('all');
+                onDashboardMonthChange('');
+              }}
+            >
+              Reset
+            </button>
+          )}
         </div>
 
         <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, display: 'block', marginTop: 6 }}>
-          Menampilkan: <strong style={{ color: '#0f172a' }}>{filterKebunId === 'all' ? 'Semua Kebun' : getKebunName(filterKebunId)}</strong> • <strong style={{ color: '#0f172a' }}>{monthLabel}</strong>
+          Menampilkan: <strong style={{ color: '#0f172a' }}>{filterKebunId === 'all' ? 'Semua Kebun' : getKebunName(filterKebunId)}</strong> • <strong style={{ color: '#0f172a' }}>{periodLabel}</strong>
         </span>
       </div>
 
@@ -201,7 +280,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="stat-icon" style={{ background: 'rgba(217, 119, 6, 0.12)' }}>
               <Sprout size={20} color="#d97706" />
             </div>
-            <div className="stat-label">{dashboardMonth ? `Produksi ${monthLabel}` : 'Total Produksi TBS'}</div>
+            <div className="stat-label">{dashboardMonth || selectedYear !== 'all' ? `Produksi (${periodLabel})` : 'Total Produksi TBS'}</div>
           </div>
           <div className="stat-value">
             {effectiveStats.totalProduksiBulanIniKg.toLocaleString('id-ID')} <span style={{ fontSize: '1rem', color: '#64748b' }}>Kg</span>
@@ -217,7 +296,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.12)' }}>
               <ArrowUpRight size={20} color="#059669" />
             </div>
-            <div className="stat-label">{dashboardMonth ? `Pendapatan ${monthLabel}` : 'Total Pendapatan TBS'}</div>
+            <div className="stat-label">{dashboardMonth || selectedYear !== 'all' ? `Pendapatan (${periodLabel})` : 'Total Pendapatan TBS'}</div>
           </div>
           <div className="stat-value" style={{ color: '#047857' }}>
             {formatRupiah(effectiveStats.totalPendapatanBulanIni)}
@@ -232,7 +311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
               <ArrowDownRight size={20} color="#dc2626" />
             </div>
-            <div className="stat-label">{dashboardMonth ? `Pengeluaran ${monthLabel}` : 'Total Pengeluaran'}</div>
+            <div className="stat-label">{dashboardMonth || selectedYear !== 'all' ? `Pengeluaran (${periodLabel})` : 'Total Pengeluaran'}</div>
           </div>
           <div className="stat-value" style={{ color: '#b91c1c' }}>
             {formatRupiah(effectiveStats.totalPengeluaranBulanIni)}
@@ -262,7 +341,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       >
         <div>
           <div style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', overflowWrap: 'anywhere' }}>
-            {dashboardMonth ? `Estimasi Laba Bersih (${monthLabel})` : 'Estimasi Laba Bersih (Keseluruhan)'}
+            {dashboardMonth || selectedYear !== 'all' ? `Estimasi Laba Bersih (${periodLabel})` : 'Estimasi Laba Bersih (Keseluruhan)'}
           </div>
           <div className="laba-value" style={{ color: effectiveStats.labaBersihBulanIni >= 0 ? '#047857' : '#b91c1c' }}>
             {formatRupiah(effectiveStats.labaBersihBulanIni)}

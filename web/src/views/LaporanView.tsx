@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
   Download,
@@ -24,24 +24,45 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   perawatanList,
   pengeluaranLainList,
 }) => {
-  const [periodFilter, setPeriodFilter] = useState<'thisMonth' | 'thisYear' | 'all'>('all');
-  const [selectedYearMonth, setSelectedYearMonth] = useState<string>(''); // YYYY-MM, lebih spesifik dari pill periode
+  const [selectedYear, setSelectedYear] = useState<string>('all'); // 'all' atau 'YYYY'
+  const [selectedYearMonth, setSelectedYearMonth] = useState<string>(''); // YYYY-MM
   const [filterKebunId, setFilterKebunId] = useState<string>('all');
 
   const [now] = useState(() => new Date());
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
+  // Daftar tahun yang tersedia dari data riwayat
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>([currentYear]);
+    panenList.forEach((p) => {
+      if (p.tanggal) {
+        const y = parseInt(p.tanggal.slice(0, 4), 10);
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    perawatanList.forEach((p) => {
+      if (p.tanggal) {
+        const y = parseInt(p.tanggal.slice(0, 4), 10);
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    pengeluaranLainList.forEach((p) => {
+      if (p.tanggal) {
+        const y = parseInt(p.tanggal.slice(0, 4), 10);
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [currentYear, panenList, perawatanList, pengeluaranLainList]);
+
   const isIncludedInPeriod = (dateStr: string) => {
     if (!dateStr) return false;
-    // Bulan eksplisit menang atas pill periode
+    // Bulan spesifik (YYYY-MM) menang jika dipilih
     if (selectedYearMonth) return dateStr.startsWith(selectedYearMonth);
-    const d = new Date(dateStr);
-    if (periodFilter === 'all') return true;
-    if (periodFilter === 'thisYear') return d.getFullYear() === currentYear;
-    if (periodFilter === 'thisMonth') {
-      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
-    }
+    // Tahun spesifik jika dipilih (bukan 'all')
+    if (selectedYear !== 'all') return dateStr.startsWith(selectedYear);
+    // Default: Semua Riwayat
     return true;
   };
 
@@ -202,39 +223,53 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             </select>
           </div>
 
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.86rem', color: '#64748b', fontWeight: 600 }}>Periode:</span>
-            {(
-              [
-                { id: 'all', label: 'Semua Riwayat' },
-                { id: 'thisYear', label: 'Tahun Ini' },
-                { id: 'thisMonth', label: 'Bulan Ini' },
-              ] as const
-            ).map((btn) => (
-              <button
-                key={btn.id}
-                className={`btn ${periodFilter === btn.id && !selectedYearMonth ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '6px 14px', fontSize: '0.82rem', borderRadius: 20 }}
-                onClick={() => {
-                  setPeriodFilter(btn.id);
-                  if (btn.id === 'thisMonth') {
-                    setSelectedYearMonth(new Date().toISOString().slice(0, 7));
-                  } else {
-                    setSelectedYearMonth('');
-                  }
-                }}
-              >
-                {btn.label}
-              </button>
+          <select
+            id="filter-tahun-laporan"
+            className="form-select filter-control"
+            style={{ width: 'auto', minWidth: 0 }}
+            value={selectedYear}
+            onChange={(e) => {
+              const y = e.target.value;
+              setSelectedYear(y);
+              if (y === 'all') {
+                setSelectedYearMonth('');
+              } else if (selectedYearMonth && !selectedYearMonth.startsWith(y)) {
+                setSelectedYearMonth('');
+              }
+            }}
+            title="Filter Tahun"
+          >
+            <option value="all">Semua Tahun</option>
+            {availableYears.map((yr) => (
+              <option key={yr} value={String(yr)}>Tahun {yr}</option>
             ))}
-          </div>
+          </select>
 
           <MonthFilter
             id="filter-month-laporan"
             value={selectedYearMonth}
-            onChange={setSelectedYearMonth}
+            onChange={(ym) => {
+              setSelectedYearMonth(ym);
+              if (ym) {
+                setSelectedYear(ym.slice(0, 4));
+              }
+            }}
             showConvenience={false}
           />
+
+          {(filterKebunId !== 'all' || selectedYear !== 'all' || selectedYearMonth !== '') && (
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+              onClick={() => {
+                setFilterKebunId('all');
+                setSelectedYear('all');
+                setSelectedYearMonth('');
+              }}
+            >
+              Reset
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
