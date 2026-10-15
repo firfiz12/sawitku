@@ -304,13 +304,15 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                         <div style={{ display: 'inline-flex', gap: 6 }}>
                           <button
                             className="btn btn-secondary btn-icon"
+                            style={{ width: 30, height: 30 }}
                             title="Edit"
                             onClick={() => handleOpenEdit(p)}
                           >
-                            <Edit2 size={15} />
+                            <Edit2 size={13} />
                           </button>
                           <button
                             className="btn btn-danger btn-icon"
+                            style={{ width: 30, height: 30 }}
                             title="Hapus"
                             onClick={() => {
                               if (window.confirm('Hapus catatan perawatan ini?')) {
@@ -318,7 +320,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
                               }
                             }}
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>
@@ -332,13 +334,15 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
             <div className="mobile-only-cards">
               {filteredPerawatan.map((p) => (
                 <div key={p.id} className="mobile-data-card">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{p.tanggal}</span>
-                      <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
-                      <span className="badge badge-warning">{p.jenis_perawatan}</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{p.tanggal}</span>
+                        <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
+                        <span className="badge badge-warning">{p.jenis_perawatan}</span>
+                      </div>
                     </div>
-                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button
                         className="btn btn-secondary btn-icon"
                         title="Edit"
