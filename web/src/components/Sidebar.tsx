@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <aside className={`app-sidebar ${isOpenMobile ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="brand-icon-box">
-            <Trees size={26} color="#ffffff" />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="SawitKu Logo" className="brand-logo-img" />
           </div>
           <div>
             <div className="brand-title">SawitKu</div>

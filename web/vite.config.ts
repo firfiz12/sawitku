@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.svg', 'icons/*.png'],
+        includeAssets: ['logo.png', 'favicon.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'icons/*.png'],
         manifest: {
           name: 'SawitKu - Manajemen Kebun Sawit',
           short_name: 'SawitKu',
