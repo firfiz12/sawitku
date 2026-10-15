@@ -21,14 +21,14 @@ export const MonthFilter: React.FC<MonthFilterProps> = ({
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         <CalendarDays size={16} color="#64748b" />
         <input
           id={id}
           type="month"
           className="form-input filter-control"
-          style={{ width: 'auto', minWidth: 160 }}
+          style={{ width: 'auto', minWidth: 0 }}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           title="Filter Bulan (kosong = semua)"

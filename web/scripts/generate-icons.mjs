@@ -24,7 +24,6 @@ for (const size of sizes) {
   
   // Palm leaf icon (simplified)
   ctx.fillStyle = '#fff';
-  const s = size / 512;
   ctx.font = `bold ${size * 0.5}px serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';

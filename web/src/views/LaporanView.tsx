@@ -5,6 +5,7 @@ import {
   Printer,
   ArrowUpRight,
   ArrowDownRight,
+  Trees,
 } from 'lucide-react';
 import type { Kebun, Panen, Perawatan, PengeluaranLain } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
@@ -22,8 +23,9 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   perawatanList,
   pengeluaranLainList,
 }) => {
-  const [periodFilter, setPeriodFilter] = useState<'thisMonth' | 'last3Months' | 'thisYear' | 'all'>('thisYear');
+  const [periodFilter, setPeriodFilter] = useState<'thisMonth' | 'thisYear' | 'all'>('all');
   const [selectedYearMonth, setSelectedYearMonth] = useState<string>(''); // YYYY-MM, lebih spesifik dari pill periode
+  const [filterKebunId, setFilterKebunId] = useState<string>('all');
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -39,16 +41,26 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     if (periodFilter === 'thisMonth') {
       return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
     }
-    if (periodFilter === 'last3Months') {
-      const diffMonths = (currentYear - d.getFullYear()) * 12 + (currentMonth - d.getMonth());
-      return diffMonths >= 0 && diffMonths < 3;
-    }
     return true;
   };
 
-  const filteredPanen = panenList.filter((p) => isIncludedInPeriod(p.tanggal));
-  const filteredPerawatan = perawatanList.filter((p) => isIncludedInPeriod(p.tanggal));
-  const filteredPengeluaranLain = pengeluaranLainList.filter((p) => isIncludedInPeriod(p.tanggal));
+  const filteredPanen = panenList.filter((p) => {
+    if (!isIncludedInPeriod(p.tanggal)) return false;
+    if (filterKebunId !== 'all' && p.kebun_id !== filterKebunId) return false;
+    return true;
+  });
+
+  const filteredPerawatan = perawatanList.filter((p) => {
+    if (!isIncludedInPeriod(p.tanggal)) return false;
+    if (filterKebunId !== 'all' && p.kebun_id !== filterKebunId) return false;
+    return true;
+  });
+
+  const filteredPengeluaranLain = pengeluaranLainList.filter((p) => {
+    if (!isIncludedInPeriod(p.tanggal)) return false;
+    if (filterKebunId !== 'all' && p.kebun_id && p.kebun_id !== filterKebunId) return false;
+    return true;
+  });
 
   // Totals
   const totalBeratTBS = filteredPanen.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
@@ -67,8 +79,12 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     }).format(val);
   };
 
-  // Yield Per Kebun
-  const kebunPerformance = kebunList.map((k) => {
+  // Yield Per Kebun (hanya tampilkan kebun yang difilter atau semua kebun)
+  const displayedKebunList = filterKebunId === 'all'
+    ? kebunList
+    : kebunList.filter((k) => k.id === filterKebunId);
+
+  const kebunPerformance = displayedKebunList.map((k) => {
     const kPanen = filteredPanen.filter((p) => p.kebun_id === k.id);
     const kBerat = kPanen.reduce((acc, p) => acc + (Number(p.berat_kg) || 0), 0);
     const kPendapatan = kPanen.reduce((acc, p) => acc + (Number(p.total_pendapatan) || 0), 0);
@@ -146,34 +162,51 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   return (
     <div>
       {/* Top Filter & Export Bar */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.88rem', color: '#94a3b8', fontWeight: 600 }}>Periode Laporan:</span>
-          {(
-            [
-              { id: 'thisMonth', label: 'Bulan Ini' },
-              { id: 'last3Months', label: '3 Bulan Terakhir' },
-              { id: 'thisYear', label: 'Tahun Ini' },
-              { id: 'all', label: 'Semua Riwayat' },
-            ] as const
-          ).map((btn) => (
-            <button
-              key={btn.id}
-              className={`btn ${periodFilter === btn.id && !selectedYearMonth ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-              onClick={() => {
-                setPeriodFilter(btn.id);
-                // Saat memilih pill, bulan eksplisit dikosongkan supaya pill berlaku
-                if (btn.id === 'thisMonth') {
-                  setSelectedYearMonth(new Date().toISOString().slice(0, 7));
-                } else {
-                  setSelectedYearMonth('');
-                }
-              }}
+      <div className="card filter-bar" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Trees size={16} color="#059669" />
+            <select
+              id="filter-kebun-laporan"
+              className="form-select filter-control"
+              style={{ width: 'auto', minWidth: 0 }}
+              value={filterKebunId}
+              onChange={(e) => setFilterKebunId(e.target.value)}
+              title="Filter Blok Kebun"
             >
-              {btn.label}
-            </button>
-          ))}
+              <option value="all">Semua Blok Kebun</option>
+              {kebunList.map((k) => (
+                <option key={k.id} value={k.id}>{k.nama} ({k.luas_hektar} Ha)</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.86rem', color: '#64748b', fontWeight: 600 }}>Periode:</span>
+            {(
+              [
+                { id: 'all', label: 'Semua Riwayat' },
+                { id: 'thisYear', label: 'Tahun Ini' },
+                { id: 'thisMonth', label: 'Bulan Ini' },
+              ] as const
+            ).map((btn) => (
+              <button
+                key={btn.id}
+                className={`btn ${periodFilter === btn.id && !selectedYearMonth ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', borderRadius: 20 }}
+                onClick={() => {
+                  setPeriodFilter(btn.id);
+                  if (btn.id === 'thisMonth') {
+                    setSelectedYearMonth(new Date().toISOString().slice(0, 7));
+                  } else {
+                    setSelectedYearMonth('');
+                  }
+                }}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
 
           <MonthFilter
             id="filter-month-laporan"
@@ -198,10 +231,12 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       {/* Financial Overview Cards */}
       <div className="stat-grid" style={{ marginBottom: 24 }}>
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(5, 150, 105, 0.12)' }}>
-            <ArrowUpRight size={22} color="#059669" />
+          <div className="stat-header">
+            <div className="stat-icon" style={{ background: 'rgba(5, 150, 105, 0.12)' }}>
+              <ArrowUpRight size={22} color="#059669" />
+            </div>
+            <div className="stat-label">Total Pendapatan TBS</div>
           </div>
-          <div className="stat-label">Total Pendapatan TBS</div>
           <div className="stat-value" style={{ color: '#047857' }}>
             {formatRupiah(totalPendapatan)}
           </div>
@@ -211,23 +246,27 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         </div>
 
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
-            <ArrowDownRight size={22} color="#dc2626" />
+          <div className="stat-header">
+            <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
+              <ArrowDownRight size={22} color="#dc2626" />
+            </div>
+            <div className="stat-label">Total Pengeluaran</div>
           </div>
-          <div className="stat-label">Total Pengeluaran</div>
           <div className="stat-value" style={{ color: '#b91c1c' }}>
             {formatRupiah(totalPengeluaran)}
           </div>
-          <div className="stat-subtext">
-            <span>Perawatan: {formatRupiah(totalBiayaPerawatan)} • Lain: {formatRupiah(totalPengeluaranLain)}</span>
+          <div className="stat-subtext" style={{ overflowWrap: 'anywhere' }}>
+            <span>Perawatan: {formatRupiah(totalBiayaPerawatan)}</span>
           </div>
         </div>
 
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: labaBersih >= 0 ? 'rgba(5, 150, 105, 0.12)' : 'rgba(220, 38, 38, 0.12)' }}>
-            <TrendingUp size={22} color={labaBersih >= 0 ? '#059669' : '#dc2626'} />
+          <div className="stat-header">
+            <div className="stat-icon" style={{ background: labaBersih >= 0 ? 'rgba(5, 150, 105, 0.12)' : 'rgba(220, 38, 38, 0.12)' }}>
+              <TrendingUp size={22} color={labaBersih >= 0 ? '#059669' : '#dc2626'} />
+            </div>
+            <div className="stat-label">Laba Bersih</div>
           </div>
-          <div className="stat-label">Laba Bersih Operasional</div>
           <div className="stat-value" style={{ color: labaBersih >= 0 ? '#047857' : '#b91c1c' }}>
             {formatRupiah(labaBersih)}
           </div>
@@ -301,8 +340,8 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: 6 }}>
-                <span style={{ color: '#1e293b', fontWeight: 600 }}>Perawatan Kebun (Pupuk, Gulma, Upah)</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
+                <span style={{ color: '#1e293b', fontWeight: 600 }}>Perawatan Kebun</span>
                 <span style={{ fontWeight: 700, color: '#0284c7' }}>{formatRupiah(totalBiayaPerawatan)}</span>
               </div>
               <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
@@ -317,8 +356,8 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: 6 }}>
-                <span style={{ color: '#1e293b', fontWeight: 600 }}>Pengeluaran Lain (Alat, Solar BBM, Lansir)</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
+                <span style={{ color: '#1e293b', fontWeight: 600 }}>Pengeluaran Lain</span>
                 <span style={{ fontWeight: 700, color: '#d97706' }}>{formatRupiah(totalPengeluaranLain)}</span>
               </div>
               <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
@@ -362,7 +401,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           </div>
         </div>
 
-        <div className="table-wrapper">
+        <div className="table-wrapper desktop-only-table">
           <table className="table-modern">
             <thead>
               <tr>
@@ -393,6 +432,61 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: Kartu Produktivitas Lengkap Tanpa Perlu Geser Kanan-Kiri */}
+        <div className="mobile-only-cards" style={{ padding: '0 0 6px 0' }}>
+          {kebunPerformance.map((item) => (
+            <div key={item.kebun.id} className="mobile-data-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.96rem' }}>
+                    {item.kebun.nama}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+                    Luas: {item.kebun.luas_hektar} Ha
+                  </div>
+                </div>
+                <span className="badge badge-info" style={{ fontWeight: 700 }}>
+                  {item.kontribusiPersen.toFixed(1)}% Kontribusi
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '10px 12px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Total Panen</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
+                    {item.totalBerat.toLocaleString('id-ID')} Kg
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Produktivitas</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#059669' }}>
+                    {Math.round(item.yieldKgPerHa).toLocaleString('id-ID')} Kg/Ha
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Total Pendapatan</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#047857' }}>
+                    {formatRupiah(item.totalPendapatan)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Biaya Perawatan</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#dc2626' }}>
+                    {formatRupiah(item.totalPerawatan)}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', paddingTop: 2 }}>
+                <span style={{ color: '#64748b' }}>Estimasi Margin Kebun:</span>
+                <strong style={{ color: item.totalPendapatan - item.totalPerawatan >= 0 ? '#047857' : '#dc2626', fontWeight: 800 }}>
+                  {formatRupiah(item.totalPendapatan - item.totalPerawatan)}
+                </strong>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

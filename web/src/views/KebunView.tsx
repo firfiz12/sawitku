@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { Kebun } from '../types';
 import { WeatherWidget } from '../components/WeatherWidget';
+import { UndoRedoButtons } from '../components/UndoRedoButtons';
 import {
   getProvinsi,
   getKabupaten,
@@ -29,6 +30,10 @@ interface KebunViewProps {
   isModalOpen: boolean;
   onOpenModal: () => void;
   onCloseModal: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export const KebunView: React.FC<KebunViewProps> = ({
@@ -39,6 +44,10 @@ export const KebunView: React.FC<KebunViewProps> = ({
   isModalOpen,
   onOpenModal,
   onCloseModal,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }) => {
   const [search, setSearch] = useState('');
   const [editingKebun, setEditingKebun] = useState<Kebun | null>(null);
@@ -237,8 +246,8 @@ export const KebunView: React.FC<KebunViewProps> = ({
   return (
     <div>
       {/* Header Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', minWidth: 280, flex: 1 }}>
+      <div className="kebun-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', minWidth: 0, flex: 1, maxWidth: 400 }}>
           <Search
             size={18}
             color="#94a3b8"
@@ -248,17 +257,26 @@ export const KebunView: React.FC<KebunViewProps> = ({
             id="input-search-kebun"
             type="text"
             className="form-input"
-            style={{ paddingLeft: 40 }}
+            style={{ paddingLeft: 40, width: '100%' }}
             placeholder="Cari nama atau lokasi kebun..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        <button id="btn-add-kebun" className="btn btn-primary" onClick={handleOpenAdd}>
-          <Plus size={18} />
-          <span>Tambah Kebun Baru</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <UndoRedoButtons
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            entityName="kebun"
+          />
+          <button id="btn-add-kebun" className="btn btn-primary" onClick={handleOpenAdd}>
+            <Plus size={18} />
+            <span>Tambah Kebun Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid Kebun */}

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { Panen, Kebun } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
+import { UndoRedoButtons } from '../components/UndoRedoButtons';
 
 interface PanenViewProps {
   panenList: Panen[];
@@ -21,6 +22,10 @@ interface PanenViewProps {
   onOpenModal: (preselectedKebunId?: string) => void;
   onCloseModal: () => void;
   preselectedKebunId?: string;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export const PanenView: React.FC<PanenViewProps> = ({
@@ -32,6 +37,10 @@ export const PanenView: React.FC<PanenViewProps> = ({
   onOpenModal,
   onCloseModal,
   preselectedKebunId,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }) => {
   const [filterKebun, setFilterKebun] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>(''); // YYYY-MM
@@ -57,7 +66,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
     setHargaPerKg('2400');
     setPembeli('');
     setCatatan('');
-  }, [isModalOpen, editingPanen]);
+  }, [isModalOpen, editingPanen, preselectedKebunId, kebunList]);
 
   const closeModal = () => {
     setEditingPanen(null);
@@ -170,7 +179,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
           <select
             id="filter-kebun-panen"
             className="form-select filter-control"
-            style={{ width: 'auto', minWidth: 180 }}
+            style={{ width: 'auto', minWidth: 0 }}
             value={filterKebun}
             onChange={(e) => setFilterKebun(e.target.value)}
           >
@@ -200,10 +209,19 @@ export const PanenView: React.FC<PanenViewProps> = ({
           )}
         </div>
 
-        <button id="btn-add-panen" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
-          <Plus size={18} />
-          <span>+ Catat Panen</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <UndoRedoButtons
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            entityName="panen"
+          />
+          <button id="btn-add-panen" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
+            <Plus size={18} />
+            <span>+ Catat Panen</span>
+          </button>
+        </div>
       </div>
 
       {/* Table Data Panen */}
@@ -217,65 +235,124 @@ export const PanenView: React.FC<PanenViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="table-wrapper">
-            <table className="table-modern">
-              <thead>
-                <tr>
-                  <th>Tanggal</th>
-                  <th>Kebun</th>
-                  <th>Berat TBS</th>
-                  <th>Janjang</th>
-                  <th>Harga / Kg</th>
-                  <th>Total Nilai</th>
-                  <th>Pembeli / PKS</th>
-                  <th style={{ textAlign: 'right' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPanen.map((p) => (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 600, color: '#0f172a' }}>{p.tanggal}</td>
-                    <td>
-                      <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
-                    </td>
-                    <td style={{ fontWeight: 700, color: '#0f172a' }}>
-                      {p.berat_kg.toLocaleString('id-ID')} Kg
-                    </td>
-                    <td>{p.jumlah_janjang > 0 ? `${p.jumlah_janjang} JJG` : '-'}</td>
-                    <td>Rp {p.harga_per_kg.toLocaleString('id-ID')}</td>
-                    <td style={{ fontWeight: 700, color: '#059669' }}>
-                      {formatRupiah(p.total_pendapatan)}
-                    </td>
-                    <td style={{ color: '#64748b', fontSize: '0.85rem' }}>{p.pembeli || '-'}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button
-                          className="btn btn-secondary btn-icon"
-                          style={{ width: 30, height: 30 }}
-                          title="Edit"
-                          onClick={() => handleOpenEdit(p)}
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          className="btn btn-danger btn-icon"
-                          style={{ width: 30, height: 30 }}
-                          title="Hapus"
-                          onClick={() => {
-                            if (window.confirm('Hapus transaksi panen ini?')) {
-                              onDeletePanen(p.id);
-                            }
-                          }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="table-wrapper desktop-only-table">
+              <table className="table-modern">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Kebun</th>
+                    <th>Berat TBS</th>
+                    <th>Janjang</th>
+                    <th>Harga / Kg</th>
+                    <th>Total Nilai</th>
+                    <th>Pembeli / PKS</th>
+                    <th style={{ textAlign: 'right' }}>Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredPanen.map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ fontWeight: 600, color: '#0f172a' }}>{p.tanggal}</td>
+                      <td>
+                        <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
+                      </td>
+                      <td style={{ fontWeight: 700, color: '#0f172a' }}>
+                        {p.berat_kg.toLocaleString('id-ID')} Kg
+                      </td>
+                      <td>{p.jumlah_janjang > 0 ? `${p.jumlah_janjang} JJG` : '-'}</td>
+                      <td>Rp {p.harga_per_kg.toLocaleString('id-ID')}</td>
+                      <td style={{ fontWeight: 700, color: '#059669' }}>
+                        {formatRupiah(p.total_pendapatan)}
+                      </td>
+                      <td style={{ color: '#64748b', fontSize: '0.85rem' }}>{p.pembeli || '-'}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button
+                            className="btn btn-secondary btn-icon"
+                            style={{ width: 30, height: 30 }}
+                            title="Edit"
+                            onClick={() => handleOpenEdit(p)}
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            className="btn btn-danger btn-icon"
+                            style={{ width: 30, height: 30 }}
+                            title="Hapus"
+                            onClick={() => {
+                              if (window.confirm('Hapus transaksi panen ini?')) {
+                                onDeletePanen(p.id);
+                              }
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View: Kartu Riwayat Panen */}
+            <div className="mobile-only-cards">
+              {filteredPanen.map((p) => (
+                <div key={p.id} className="mobile-data-card">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{p.tanggal}</span>
+                      <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
+                    </div>
+                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <button
+                        className="btn btn-secondary btn-icon"
+                        style={{ width: 34, height: 34 }}
+                        title="Edit"
+                        onClick={() => handleOpenEdit(p)}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        className="btn btn-danger btn-icon"
+                        style={{ width: 34, height: 34 }}
+                        title="Hapus"
+                        onClick={() => {
+                          if (window.confirm('Hapus transaksi panen ini?')) {
+                            onDeletePanen(p.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginTop: 2 }}>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Total Penjualan</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#047857' }}>
+                        {formatRupiah(p.total_pendapatan)}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Berat Bersih</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                        {p.berat_kg.toLocaleString('id-ID')} Kg
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: '0.8rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+                    <span>{p.jumlah_janjang > 0 ? `${p.jumlah_janjang} JJG` : '-'}</span>
+                    <span>@ Rp {p.harga_per_kg.toLocaleString('id-ID')}/kg</span>
+                    <span>PKS: <strong style={{ color: '#334155' }}>{p.pembeli || '-'}</strong></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

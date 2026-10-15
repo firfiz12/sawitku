@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { Perawatan, Kebun } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
+import { UndoRedoButtons } from '../components/UndoRedoButtons';
 
 interface PerawatanViewProps {
   perawatanList: Perawatan[];
@@ -19,6 +20,10 @@ interface PerawatanViewProps {
   isModalOpen: boolean;
   onOpenModal: () => void;
   onCloseModal: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export const PerawatanView: React.FC<PerawatanViewProps> = ({
@@ -29,6 +34,10 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
   isModalOpen,
   onOpenModal,
   onCloseModal,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }) => {
   const [filterKebun, setFilterKebun] = useState<string>('all');
   const [filterJenis, setFilterJenis] = useState<string>('all');
@@ -57,7 +66,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
     setBiayaTenaga('');
     setBiayaBahan('');
     setCatatan('');
-  }, [isModalOpen, editingPerawatan]);
+  }, [isModalOpen, editingPerawatan, kebunList]);
 
   const closeModal = () => {
     setEditingPerawatan(null);
@@ -183,7 +192,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
           <select
             id="filter-kebun-perawatan"
             className="form-select filter-control"
-            style={{ width: 'auto', minWidth: 180 }}
+            style={{ width: 'auto', minWidth: 0 }}
             value={filterKebun}
             onChange={(e) => setFilterKebun(e.target.value)}
           >
@@ -196,7 +205,7 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
           <select
             id="filter-jenis-perawatan"
             className="form-select filter-control"
-            style={{ width: 'auto', minWidth: 180 }}
+            style={{ width: 'auto', minWidth: 0 }}
             value={filterJenis}
             onChange={(e) => setFilterJenis(e.target.value)}
           >
@@ -227,10 +236,19 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
           )}
         </div>
 
-        <button id="btn-add-perawatan" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
-          <Plus size={18} />
-          <span>+ Catat Perawatan</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <UndoRedoButtons
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            entityName="perawatan"
+          />
+          <button id="btn-add-perawatan" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
+            <Plus size={18} />
+            <span>+ Catat Perawatan</span>
+          </button>
+        </div>
       </div>
 
       {/* Table Data Perawatan */}
@@ -244,68 +262,129 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="table-wrapper">
-            <table className="table-modern">
-              <thead>
-                <tr>
-                  <th>Tanggal</th>
-                  <th>Kebun</th>
-                  <th>Jenis Perawatan</th>
-                  <th>Bahan & Dosis</th>
-                  <th>Biaya Tenaga</th>
-                  <th>Biaya Bahan</th>
-                  <th>Total Biaya</th>
-                  <th style={{ textAlign: 'right' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPerawatan.map((p) => (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 600 }}>{p.tanggal}</td>
-                    <td>
-                      <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
-                    </td>
-                    <td>
-                      <span className="badge badge-warning">{p.jenis_perawatan}</span>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{p.nama_bahan || '-'}</div>
-                      {p.dosis && <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Dosis: {p.dosis}</div>}
-                    </td>
-                    <td>{formatRupiah(p.biaya_tenaga_kerja || 0)}</td>
-                    <td>{formatRupiah(p.biaya_bahan || 0)}</td>
-                    <td style={{ fontWeight: 800, color: '#dc2626' }}>
-                      {formatRupiah(p.total_biaya)}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button
-                          className="btn btn-secondary btn-icon"
-                          style={{ width: 30, height: 30 }}
-                          title="Edit"
-                          onClick={() => handleOpenEdit(p)}
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          className="btn btn-danger btn-icon"
-                          style={{ width: 30, height: 30 }}
-                          title="Hapus"
-                          onClick={() => {
-                            if (window.confirm('Hapus catatan perawatan ini?')) {
-                              onDeletePerawatan(p.id);
-                            }
-                          }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="table-wrapper desktop-only-table">
+              <table className="table-modern">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Kebun</th>
+                    <th>Jenis Perawatan</th>
+                    <th>Bahan & Dosis</th>
+                    <th>Biaya Tenaga</th>
+                    <th>Biaya Bahan</th>
+                    <th>Total Biaya</th>
+                    <th style={{ textAlign: 'right' }}>Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredPerawatan.map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ fontWeight: 600 }}>{p.tanggal}</td>
+                      <td>
+                        <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
+                      </td>
+                      <td>
+                        <span className="badge badge-warning">{p.jenis_perawatan}</span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{p.nama_bahan || '-'}</div>
+                        {p.dosis && <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Dosis: {p.dosis}</div>}
+                      </td>
+                      <td>{formatRupiah(p.biaya_tenaga_kerja || 0)}</td>
+                      <td>{formatRupiah(p.biaya_bahan || 0)}</td>
+                      <td style={{ fontWeight: 800, color: '#dc2626' }}>
+                        {formatRupiah(p.total_biaya)}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button
+                            className="btn btn-secondary btn-icon"
+                            style={{ width: 30, height: 30 }}
+                            title="Edit"
+                            onClick={() => handleOpenEdit(p)}
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            className="btn btn-danger btn-icon"
+                            style={{ width: 30, height: 30 }}
+                            title="Hapus"
+                            onClick={() => {
+                              if (window.confirm('Hapus catatan perawatan ini?')) {
+                                onDeletePerawatan(p.id);
+                              }
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View: Kartu Riwayat Perawatan */}
+            <div className="mobile-only-cards">
+              {filteredPerawatan.map((p) => (
+                <div key={p.id} className="mobile-data-card">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{p.tanggal}</span>
+                      <span className="badge badge-info">{getKebunName(p.kebun_id)}</span>
+                      <span className="badge badge-warning">{p.jenis_perawatan}</span>
+                    </div>
+                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <button
+                        className="btn btn-secondary btn-icon"
+                        style={{ width: 34, height: 34 }}
+                        title="Edit"
+                        onClick={() => handleOpenEdit(p)}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        className="btn btn-danger btn-icon"
+                        style={{ width: 34, height: 34 }}
+                        title="Hapus"
+                        onClick={() => {
+                          if (window.confirm('Hapus catatan perawatan ini?')) {
+                            onDeletePerawatan(p.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.94rem' }}>
+                      {p.nama_bahan || p.jenis_perawatan}
+                    </div>
+                    {p.dosis && (
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+                        Dosis / Takaran: {p.dosis}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      Tenaga: {formatRupiah(p.biaya_tenaga_kerja || 0)} • Bahan: {formatRupiah(p.biaya_bahan || 0)}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#dc2626' }}>
+                        {formatRupiah(p.total_biaya)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

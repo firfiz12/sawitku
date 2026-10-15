@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Trees,
   Sprout,
-  Receipt,
   TrendingUp,
   AlertTriangle,
   Clock,
@@ -10,15 +9,19 @@ import {
   ArrowDownRight,
   ChevronRight,
   Filter,
+  Receipt,
 } from 'lucide-react';
 import type {
   Kebun,
   Panen,
+  Perawatan,
+  PengeluaranLain,
   PengingatPanenInfo,
   DashboardStats,
 } from '../types';
 import type { NavTab } from '../components/Sidebar';
 import { MonthFilter } from '../components/MonthFilter';
+import { dataService } from '../services/dataService';
 
 interface DashboardViewProps {
   stats: DashboardStats;
@@ -27,6 +30,8 @@ interface DashboardViewProps {
   pengingatList: PengingatPanenInfo[];
   recentPanen: Panen[];
   kebunList: Kebun[];
+  perawatanList?: Perawatan[];
+  pengeluaranLainList?: PengeluaranLain[];
   onNavigate: (tab: NavTab) => void;
   onOpenPanenModal: (preselectedKebunId?: string) => void;
   onOpenPerawatanModal: () => void;
@@ -41,12 +46,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   pengingatList,
   recentPanen,
   kebunList,
+  perawatanList = [],
+  pengeluaranLainList = [],
   onNavigate,
   onOpenPanenModal,
   onOpenPerawatanModal,
   onOpenPengeluaranLainModal,
   onOpenKebunModal,
 }) => {
+  const [filterKebunId, setFilterKebunId] = useState<string>('all');
+
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -66,9 +75,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         const names = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         return `${names[(m || 1) - 1]} ${y}`;
       })()
-    : 'Bulan Ini';
+    : 'Semua Riwayat (Akumulasi)';
 
-  const overdueList = pengingatList.filter(
+  // Stats yang dihitung berdasarkan filter kebun
+  const effectiveStats = useMemo(() => {
+    if (filterKebunId === 'all') return stats;
+    const filteredKebun = kebunList.filter((k) => k.id === filterKebunId);
+    const filteredPanen = recentPanen.filter((p) => p.kebun_id === filterKebunId);
+    const filteredPerawatan = perawatanList.filter((p) => p.kebun_id === filterKebunId);
+    const filteredPengeluaranLain = pengeluaranLainList.filter((pl) => pl.kebun_id === filterKebunId);
+    return dataService.calculateStats(
+      filteredKebun,
+      filteredPanen,
+      filteredPerawatan,
+      filteredPengeluaranLain,
+      dashboardMonth || undefined
+    );
+  }, [filterKebunId, stats, kebunList, recentPanen, perawatanList, pengeluaranLainList, dashboardMonth]);
+
+  const filteredPengingat = useMemo(() => {
+    if (filterKebunId === 'all') return pengingatList;
+    return pengingatList.filter((p) => p.kebunId === filterKebunId);
+  }, [filterKebunId, pengingatList]);
+
+  const filteredPanenList = useMemo(() => {
+    if (filterKebunId === 'all') return recentPanen;
+    return recentPanen.filter((p) => p.kebun_id === filterKebunId);
+  }, [filterKebunId, recentPanen]);
+
+  const overdueList = filteredPengingat.filter(
     (p) => p.status === 'LEWAT_JADWAL' || p.status === 'HARI_INI'
   );
 
@@ -76,7 +111,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div>
       {/* Pengingat Rotasi Panen Alert Banner */}
       {overdueList.length > 0 && (
-        <div className="harvest-alert-banner" id="banner-harvest-alerts">
+        <div className="harvest-alert-banner" id="banner-harvest-alerts" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div
               style={{
@@ -93,10 +128,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <AlertTriangle size={24} color="#dc2626" />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#991b1b' }}>
-                Perhatian: {overdueList.length} Blok Kebun Siap / Lewat Jadwal Panen!
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: '#991b1b' }}>
+                Pemberitahuan: {overdueList.length} Blok Kebun Siap / Lewat Jadwal Panen!
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#b45309', marginTop: 2, fontWeight: 500 }}>
+              <div style={{ fontSize: '0.84rem', color: '#b45309', marginTop: 2, fontWeight: 500 }}>
                 {overdueList.map((k) => `${k.namaKebun} (${k.hariTersisa < 0 ? `${Math.abs(k.hariTersisa)} hari terlambat` : 'Jadwal hari ini'})`).join(' • ')}
               </div>
             </div>
@@ -112,39 +147,64 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Filter Bulan Analitik */}
-      <div className="card filter-bar" style={{ padding: '14px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <Filter size={16} color="#94a3b8" />
-          <span style={{ fontSize: '0.88rem', color: '#64748b', fontWeight: 600 }}>Periode Analitik:</span>
+      {/* Filter Bar Dashboard (Periode & Kebun) */}
+      <div className="card filter-bar" style={{ padding: '14px 20px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={16} color="#94a3b8" />
+            <span style={{ fontSize: '0.86rem', color: '#64748b', fontWeight: 600 }}>Filter:</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Trees size={16} color="#059669" />
+            <select
+              id="filter-kebun-dashboard"
+              className="form-select filter-control"
+              style={{ width: 'auto', minWidth: 0 }}
+              value={filterKebunId}
+              onChange={(e) => setFilterKebunId(e.target.value)}
+              title="Filter Blok Kebun"
+            >
+              <option value="all">Semua Blok Kebun</option>
+              {kebunList.map((k) => (
+                <option key={k.id} value={k.id}>{k.nama} ({k.luas_hektar} Ha)</option>
+              ))}
+            </select>
+          </div>
+
           <MonthFilter id="filter-month-dashboard" value={dashboardMonth} onChange={onDashboardMonthChange} />
         </div>
-        <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600 }}>
-          Menampilkan <strong style={{ color: '#0f172a' }}>{monthLabel}</strong>
+
+        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, display: 'block', marginTop: 6 }}>
+          Menampilkan: <strong style={{ color: '#0f172a' }}>{filterKebunId === 'all' ? 'Semua Kebun' : getKebunName(filterKebunId)}</strong> • <strong style={{ color: '#0f172a' }}>{monthLabel}</strong>
         </span>
       </div>
 
       {/* KPI Cards Grid */}
       <div className="stat-grid">
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(5, 150, 105, 0.12)' }}>
-            <Trees size={22} color="#059669" />
+          <div className="stat-header">
+            <div className="stat-icon" style={{ background: 'rgba(5, 150, 105, 0.12)' }}>
+              <Trees size={20} color="#059669" />
+            </div>
+            <div className="stat-label">Total Luas Kebun</div>
           </div>
-          <div className="stat-label">Total Luas Kebun</div>
-          <div className="stat-value">{stats.totalLuasHa.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b' }}>Ha</span></div>
+          <div className="stat-value">{effectiveStats.totalLuasHa.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b' }}>Ha</span></div>
           <div className="stat-subtext">
-            <span style={{ fontWeight: 600, color: '#0f172a' }}>{stats.totalKebun}</span>
-            <span>Blok kebun produktif</span>
+            <span style={{ fontWeight: 600, color: '#0f172a' }}>{effectiveStats.totalKebun}</span>
+            <span>Blok kebun aktif</span>
           </div>
         </div>
 
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(217, 119, 6, 0.12)' }}>
-            <Sprout size={22} color="#d97706" />
+          <div className="stat-header">
+            <div className="stat-icon" style={{ background: 'rgba(217, 119, 6, 0.12)' }}>
+              <Sprout size={20} color="#d97706" />
+            </div>
+            <div className="stat-label">{dashboardMonth ? `Produksi ${monthLabel}` : 'Total Produksi TBS'}</div>
           </div>
-          <div className="stat-label">Produksi {monthLabel}</div>
           <div className="stat-value">
-            {stats.totalProduksiBulanIniKg.toLocaleString('id-ID')} <span style={{ fontSize: '1rem', color: '#64748b' }}>Kg</span>
+            {effectiveStats.totalProduksiBulanIniKg.toLocaleString('id-ID')} <span style={{ fontSize: '1rem', color: '#64748b' }}>Kg</span>
           </div>
           <div className="stat-subtext">
             <TrendingUp size={14} color="#059669" />
@@ -153,12 +213,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.12)' }}>
-            <ArrowUpRight size={22} color="#059669" />
+          <div className="stat-header">
+            <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.12)' }}>
+              <ArrowUpRight size={20} color="#059669" />
+            </div>
+            <div className="stat-label">{dashboardMonth ? `Pendapatan ${monthLabel}` : 'Total Pendapatan TBS'}</div>
           </div>
-          <div className="stat-label">Pendapatan {monthLabel}</div>
           <div className="stat-value" style={{ color: '#047857' }}>
-            {formatRupiah(stats.totalPendapatanBulanIni)}
+            {formatRupiah(effectiveStats.totalPendapatanBulanIni)}
           </div>
           <div className="stat-subtext">
             <span>Hasil penjualan TBS</span>
@@ -166,12 +228,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
-            <ArrowDownRight size={22} color="#dc2626" />
+          <div className="stat-header">
+            <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
+              <ArrowDownRight size={20} color="#dc2626" />
+            </div>
+            <div className="stat-label">{dashboardMonth ? `Pengeluaran ${monthLabel}` : 'Total Pengeluaran'}</div>
           </div>
-          <div className="stat-label">Pengeluaran {monthLabel}</div>
           <div className="stat-value" style={{ color: '#b91c1c' }}>
-            {formatRupiah(stats.totalPengeluaranBulanIni)}
+            {formatRupiah(effectiveStats.totalPengeluaranBulanIni)}
           </div>
           <div className="stat-subtext">
             <span>Perawatan & Operasional</span>
@@ -183,10 +247,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div
         className="card"
         style={{
-          background: stats.labaBersihBulanIni >= 0
+          background: effectiveStats.labaBersihBulanIni >= 0
             ? 'linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%)'
             : 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)',
-          borderColor: stats.labaBersihBulanIni >= 0 ? '#a7f3d0' : '#fecaca',
+          borderColor: effectiveStats.labaBersihBulanIni >= 0 ? '#a7f3d0' : '#fecaca',
           marginBottom: 28,
           display: 'flex',
           alignItems: 'center',
@@ -197,14 +261,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         }}
       >
         <div>
-          <div style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
-            Estimasi Laba Bersih {monthLabel}
+          <div style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', overflowWrap: 'anywhere' }}>
+            {dashboardMonth ? `Estimasi Laba Bersih (${monthLabel})` : 'Estimasi Laba Bersih (Keseluruhan)'}
           </div>
-          <div className="laba-value" style={{ color: stats.labaBersihBulanIni >= 0 ? '#047857' : '#b91c1c' }}>
-            {formatRupiah(stats.labaBersihBulanIni)}
+          <div className="laba-value" style={{ color: effectiveStats.labaBersihBulanIni >= 0 ? '#047857' : '#b91c1c' }}>
+            {formatRupiah(effectiveStats.labaBersihBulanIni)}
           </div>
-          <div style={{ fontSize: '0.84rem', color: '#475569', marginTop: 4 }}>
-            Total Pendapatan (<strong style={{ color: '#047857' }}>{formatRupiah(stats.totalPendapatanBulanIni)}</strong>) dikurangi Pengeluaran (<strong style={{ color: '#b91c1c' }}>{formatRupiah(stats.totalPengeluaranBulanIni)}</strong>)
+          <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 4, overflowWrap: 'anywhere', lineHeight: 1.5 }}>
+            Pendapatan (<strong style={{ color: '#047857' }}>{formatRupiah(effectiveStats.totalPendapatanBulanIni)}</strong>) − Pengeluaran (<strong style={{ color: '#b91c1c' }}>{formatRupiah(effectiveStats.totalPengeluaranBulanIni)}</strong>)
           </div>
         </div>
 
@@ -235,62 +299,70 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {pengingatList.map((p) => {
-              const isOverdue = p.status === 'LEWAT_JADWAL';
-              const isToday = p.status === 'HARI_INI';
-              const isSoon = p.status === 'SEGERA';
+            {filteredPengingat.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748b', fontSize: '0.88rem' }}>
+                Tidak ada data rotasi panen untuk filter ini.
+              </div>
+            ) : (
+              filteredPengingat.map((p) => {
+                const isOverdue = p.status === 'LEWAT_JADWAL';
+                const isToday = p.status === 'HARI_INI';
+                const isSoon = p.status === 'SEGERA';
 
-              let badgeClass = 'badge-success';
-              let badgeText = `${p.hariTersisa} hari lagi`;
-              if (isOverdue) {
-                badgeClass = 'badge-danger';
-                badgeText = `${Math.abs(p.hariTersisa)} hr terlambat`;
-              } else if (isToday) {
-                badgeClass = 'badge-warning';
-                badgeText = 'Hari Ini!';
-              } else if (isSoon) {
-                badgeClass = 'badge-warning';
-                badgeText = `${p.hariTersisa} hari lagi`;
-              }
+                let badgeClass = 'badge-success';
+                let badgeText = `${p.hariTersisa} hari lagi`;
+                if (isOverdue) {
+                  badgeClass = 'badge-danger';
+                  badgeText = `${Math.abs(p.hariTersisa)} hr terlambat`;
+                } else if (isToday) {
+                  badgeClass = 'badge-warning';
+                  badgeText = 'Hari Ini!';
+                } else if (isSoon) {
+                  badgeClass = 'badge-warning';
+                  badgeText = `${p.hariTersisa} hari lagi`;
+                }
 
-              return (
-                <div
-                  key={p.kebunId}
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: 12,
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    boxShadow: 'var(--shadow-xs)',
-                  }}
-                >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.96rem' }}>{p.namaKebun}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                      <Clock size={13} color="#94a3b8" />
-                      <span>Rotasi: {p.rotasiHari} hari</span>
-                      <span>•</span>
-                      <span>Terakhir: {p.terakhirPanen || 'Belum pernah'}</span>
+                return (
+                  <div
+                    key={p.kebunId}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: 12,
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      boxShadow: 'var(--shadow-xs)',
+                      flexWrap: 'wrap',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.96rem' }}>{p.namaKebun}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                        <Clock size={13} color="#94a3b8" />
+                        <span>Rotasi: {p.rotasiHari} hari</span>
+                        <span>•</span>
+                        <span>Terakhir: {p.terakhirPanen || 'Belum pernah'}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      <span className={`badge ${badgeClass}`}>{badgeText}</span>
+                      <button
+                        className="btn btn-primary"
+                        style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                        onClick={() => onOpenPanenModal(p.kebunId)}
+                        title="Catat panen kebun ini"
+                      >
+                        Panen
+                      </button>
                     </div>
                   </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    <span className={`badge ${badgeClass}`}>{badgeText}</span>
-                    <button
-                      className="btn btn-primary"
-                      style={{ padding: '6px 12px', fontSize: '0.78rem' }}
-                      onClick={() => onOpenPanenModal(p.kebunId)}
-                      title="Catat panen kebun ini"
-                    >
-                      Panen
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -310,13 +382,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
-          {recentPanen.length === 0 ? (
+          {filteredPanenList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '36px 0', color: '#64748b', fontSize: '0.9rem' }}>
               Belum ada data panen yang tercatat.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {recentPanen.slice(0, 5).map((p) => (
+              {filteredPanenList.slice(0, 5).map((p) => (
                 <div
                   key={p.id}
                   style={{
@@ -328,6 +400,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     boxShadow: 'var(--shadow-xs)',
+                    flexWrap: 'wrap',
+                    gap: 10,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
@@ -353,7 +427,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0, marginLeft: 10 }}>
+                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, color: '#047857', fontSize: '0.98rem', whiteSpace: 'nowrap' }}>
                       {formatRupiah(p.total_pendapatan)}
                     </div>

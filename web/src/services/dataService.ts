@@ -937,12 +937,9 @@ export const dataService = {
   ): DashboardStats {
     const isSelectedMonth = (dateStr: string) => {
       if (!dateStr) return false;
-      // Filter bulan eksplisit (dipilih di dashboard) menang;
-      // kalau kosong, hitung bulan berjalan seperti dulu.
-      if (yearMonth) return dateStr.startsWith(yearMonth);
-      const d = new Date(dateStr);
-      const now = new Date();
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      // Jika kosong atau 'all', hitung keseluruhan dari awal hingga akhir data
+      if (!yearMonth || yearMonth === 'all') return true;
+      return dateStr.startsWith(yearMonth);
     };
 
     const totalKebun = kebunList.length;

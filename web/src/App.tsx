@@ -21,6 +21,8 @@ import type {
   PengeluaranLain,
 } from './types';
 
+import { useTableUndoRedo } from './hooks/useTableUndoRedo';
+
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -75,6 +77,31 @@ export const App: React.FC = () => {
       console.error('Error loading data:', err);
     }
   };
+
+  // Undo / Redo Hooks for each editable table
+  const kebunUndoRedo = useTableUndoRedo<Kebun>(
+    dataService.saveKebun,
+    dataService.deleteKebun,
+    loadAllData
+  );
+
+  const panenUndoRedo = useTableUndoRedo<Panen>(
+    dataService.savePanen,
+    dataService.deletePanen,
+    loadAllData
+  );
+
+  const perawatanUndoRedo = useTableUndoRedo<Perawatan>(
+    dataService.savePerawatan,
+    dataService.deletePerawatan,
+    loadAllData
+  );
+
+  const pengeluaranLainUndoRedo = useTableUndoRedo<PengeluaranLain>(
+    dataService.savePengeluaranLain,
+    dataService.deletePengeluaranLain,
+    loadAllData
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -133,44 +160,76 @@ export const App: React.FC = () => {
 
   // CRUD Handlers - Kebun
   const handleSaveKebun = async (kebun: Omit<Kebun, 'id'> & { id?: string }) => {
-    await dataService.saveKebun(kebun);
+    const prevItem = kebun.id ? kebunList.find((k) => k.id === kebun.id) : undefined;
+    const saved = await dataService.saveKebun(kebun);
+    if (prevItem) {
+      kebunUndoRedo.recordUpdate(prevItem, saved);
+    } else {
+      kebunUndoRedo.recordCreate(saved);
+    }
     await loadAllData();
   };
 
   const handleDeleteKebun = async (id: string) => {
+    const itemToDelete = kebunList.find((k) => k.id === id);
+    if (itemToDelete) kebunUndoRedo.recordDelete(itemToDelete);
     await dataService.deleteKebun(id);
     await loadAllData();
   };
 
   // CRUD Handlers - Panen
   const handleSavePanen = async (panen: Omit<Panen, 'id'> & { id?: string }) => {
-    await dataService.savePanen(panen);
+    const prevItem = panen.id ? panenList.find((p) => p.id === panen.id) : undefined;
+    const saved = await dataService.savePanen(panen);
+    if (prevItem) {
+      panenUndoRedo.recordUpdate(prevItem, saved);
+    } else {
+      panenUndoRedo.recordCreate(saved);
+    }
     await loadAllData();
   };
 
   const handleDeletePanen = async (id: string) => {
+    const itemToDelete = panenList.find((p) => p.id === id);
+    if (itemToDelete) panenUndoRedo.recordDelete(itemToDelete);
     await dataService.deletePanen(id);
     await loadAllData();
   };
 
   // CRUD Handlers - Perawatan
   const handleSavePerawatan = async (pw: Omit<Perawatan, 'id'> & { id?: string }) => {
-    await dataService.savePerawatan(pw);
+    const prevItem = pw.id ? perawatanList.find((p) => p.id === pw.id) : undefined;
+    const saved = await dataService.savePerawatan(pw);
+    if (prevItem) {
+      perawatanUndoRedo.recordUpdate(prevItem, saved);
+    } else {
+      perawatanUndoRedo.recordCreate(saved);
+    }
     await loadAllData();
   };
 
   const handleDeletePerawatan = async (id: string) => {
+    const itemToDelete = perawatanList.find((p) => p.id === id);
+    if (itemToDelete) perawatanUndoRedo.recordDelete(itemToDelete);
     await dataService.deletePerawatan(id);
     await loadAllData();
   };
 
   // CRUD Handlers - Pengeluaran Lain
   const handleSavePengeluaranLain = async (pl: Omit<PengeluaranLain, 'id'> & { id?: string }) => {
-    await dataService.savePengeluaranLain(pl);
+    const prevItem = pl.id ? pengeluaranLainList.find((p) => p.id === pl.id) : undefined;
+    const saved = await dataService.savePengeluaranLain(pl);
+    if (prevItem) {
+      pengeluaranLainUndoRedo.recordUpdate(prevItem, saved);
+    } else {
+      pengeluaranLainUndoRedo.recordCreate(saved);
+    }
     await loadAllData();
   };
 
   const handleDeletePengeluaranLain = async (id: string) => {
+    const itemToDelete = pengeluaranLainList.find((p) => p.id === id);
+    if (itemToDelete) pengeluaranLainUndoRedo.recordDelete(itemToDelete);
     await dataService.deletePengeluaranLain(id);
     await loadAllData();
   };
@@ -228,10 +287,8 @@ export const App: React.FC = () => {
         <TopBar
           currentTab={currentTab}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          overdueHarvestCount={overdueHarvestCount}
           onQuickAddPanen={() => handleOpenPanenModal()}
           onQuickAddKebun={handleOpenKebunModal}
-          onShowAlerts={() => setCurrentTab('dashboard')}
           dbStatus={dbStatus}
           onOpenDbStatus={() => setIsDbStatusModalOpen(true)}
         />
@@ -245,6 +302,8 @@ export const App: React.FC = () => {
               pengingatList={pengingatList}
               recentPanen={panenList}
               kebunList={kebunList}
+              perawatanList={perawatanList}
+              pengeluaranLainList={pengeluaranLainList}
               onNavigate={setCurrentTab}
               onOpenPanenModal={handleOpenPanenModal}
               onOpenPerawatanModal={handleOpenPerawatanModal}
@@ -262,6 +321,10 @@ export const App: React.FC = () => {
               isModalOpen={isKebunModalOpen}
               onOpenModal={() => setIsKebunModalOpen(true)}
               onCloseModal={() => setIsKebunModalOpen(false)}
+              canUndo={kebunUndoRedo.canUndo}
+              canRedo={kebunUndoRedo.canRedo}
+              onUndo={kebunUndoRedo.undo}
+              onRedo={kebunUndoRedo.redo}
             />
           )}
 
@@ -275,6 +338,10 @@ export const App: React.FC = () => {
               onOpenModal={handleOpenPanenModal}
               onCloseModal={() => setIsPanenModalOpen(false)}
               preselectedKebunId={preselectedKebunId}
+              canUndo={panenUndoRedo.canUndo}
+              canRedo={panenUndoRedo.canRedo}
+              onUndo={panenUndoRedo.undo}
+              onRedo={panenUndoRedo.redo}
             />
           )}
 
@@ -287,6 +354,10 @@ export const App: React.FC = () => {
               isModalOpen={isPerawatanModalOpen}
               onOpenModal={() => setIsPerawatanModalOpen(true)}
               onCloseModal={() => setIsPerawatanModalOpen(false)}
+              canUndo={perawatanUndoRedo.canUndo}
+              canRedo={perawatanUndoRedo.canRedo}
+              onUndo={perawatanUndoRedo.undo}
+              onRedo={perawatanUndoRedo.redo}
             />
           )}
 
@@ -298,6 +369,10 @@ export const App: React.FC = () => {
               isModalOpen={isPengeluaranLainModalOpen}
               onOpenModal={() => setIsPengeluaranLainModalOpen(true)}
               onCloseModal={() => setIsPengeluaranLainModalOpen(false)}
+              canUndo={pengeluaranLainUndoRedo.canUndo}
+              canRedo={pengeluaranLainUndoRedo.canRedo}
+              onUndo={pengeluaranLainUndoRedo.undo}
+              onRedo={pengeluaranLainUndoRedo.redo}
             />
           )}
 

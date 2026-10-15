@@ -1,15 +1,13 @@
 import React from 'react';
-import { Menu, Bell, Sprout, Trees, Database } from 'lucide-react';
+import { Menu, Sprout, Trees, Database } from 'lucide-react';
 import type { NavTab } from './Sidebar';
 import type { DatabaseStatus } from '../services/dataService';
 
 interface TopBarProps {
   currentTab: NavTab;
   onToggleMobileMenu: () => void;
-  overdueHarvestCount: number;
   onQuickAddPanen: () => void;
   onQuickAddKebun: () => void;
-  onShowAlerts: () => void;
   dbStatus: DatabaseStatus | null;
   onOpenDbStatus: () => void;
 }
@@ -17,20 +15,18 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({
   currentTab,
   onToggleMobileMenu,
-  overdueHarvestCount,
   onQuickAddPanen,
   onQuickAddKebun,
-  onShowAlerts,
   dbStatus,
   onOpenDbStatus,
 }) => {
   const titles: Record<NavTab, string> = {
-    dashboard: 'Ringkasan & Dashboard',
-    kebun: 'Daftar Kebun Sawit',
-    panen: 'Catatan & Riwayat Panen',
-    perawatan: 'Pencatatan Perawatan Kebun',
-    'pengeluaran-lain': 'Pengeluaran Lain Operasional',
-    laporan: 'Laporan Finansial & Analitik',
+    dashboard: 'Dashboard',
+    kebun: 'Daftar Kebun',
+    panen: 'Catatan Panen',
+    perawatan: 'Perawatan Kebun',
+    'pengeluaran-lain': 'Pengeluaran Lain',
+    laporan: 'Laporan Keuangan',
   };
 
   return (
@@ -49,7 +45,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span className="page-subtitle">
             <span>SawitKu</span>
             <span>•</span>
-            <span style={{ color: '#059669', fontWeight: 600 }}>Sistem Manajemen Kelapa Sawit Modern</span>
+            <span style={{ color: '#059669', fontWeight: 600 }}>Sistem Manajemen Sawit</span>
           </span>
         </div>
       </div>
@@ -60,12 +56,12 @@ export const TopBar: React.FC<TopBarProps> = ({
           id="btn-topbar-db"
           onClick={onOpenDbStatus}
           className={`btn-db-pill ${dbStatus?.isConnected ? 'online' : 'offline'}`}
-          title="Klik untuk detail koneksi Database Supabase"
+          title="Status Koneksi Database"
         >
           <span className={`status-dot ${dbStatus?.isConnected ? 'online' : 'offline'}`} />
           <Database size={14} />
           <span className="hidden-mobile">
-            {dbStatus?.isConnected ? 'Supabase Online' : 'Lokal / Offline'}
+            {dbStatus?.isConnected ? 'Database Terhubung' : 'Mode Offline'}
           </span>
         </button>
 
@@ -87,30 +83,6 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <Trees size={16} />
           <span className="hidden-mobile">+ Kebun</span>
-        </button>
-
-        <button
-          id="btn-notification-bell"
-          className="btn btn-secondary btn-icon"
-          style={{ position: 'relative' }}
-          onClick={onShowAlerts}
-          title="Notifikasi Pengingat Panen"
-        >
-          <Bell size={18} />
-          {overdueHarvestCount > 0 && (
-            <span
-              style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                width: 9,
-                height: 9,
-                borderRadius: '50%',
-                background: '#ef4444',
-                boxShadow: '0 0 6px #ef4444',
-              }}
-            />
-          )}
         </button>
       </div>
     </header>

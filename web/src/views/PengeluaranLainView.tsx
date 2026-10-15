@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { PengeluaranLain } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
+import { UndoRedoButtons } from '../components/UndoRedoButtons';
 
 interface PengeluaranLainViewProps {
   pengeluaranList: PengeluaranLain[];
@@ -18,6 +19,10 @@ interface PengeluaranLainViewProps {
   isModalOpen: boolean;
   onOpenModal: () => void;
   onCloseModal: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
@@ -27,6 +32,10 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
   isModalOpen,
   onOpenModal,
   onCloseModal,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }) => {
   const [filterKategori, setFilterKategori] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>('');
@@ -151,7 +160,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
           <select
             id="filter-kategori-pengeluaran"
             className="form-select filter-control"
-            style={{ width: 'auto', minWidth: 200 }}
+            style={{ width: 'auto', minWidth: 0 }}
             value={filterKategori}
             onChange={(e) => setFilterKategori(e.target.value)}
           >
@@ -181,10 +190,19 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
           )}
         </div>
 
-        <button id="btn-add-pengeluaran-lain" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
-          <Plus size={18} />
-          <span>+ Catat Pengeluaran Lain</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <UndoRedoButtons
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            entityName="pengeluaran"
+          />
+          <button id="btn-add-pengeluaran-lain" className="btn btn-primary filter-add" onClick={handleOpenAdd}>
+            <Plus size={18} />
+            <span>+ Catat Pengeluaran Lain</span>
+          </button>
+        </div>
       </div>
 
       {/* Table Data Pengeluaran Lain */}
@@ -198,57 +216,106 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="table-wrapper">
-            <table className="table-modern">
-              <thead>
-                <tr>
-                  <th>Tanggal</th>
-                  <th>Kategori</th>
-                  <th>Keterangan / Keperluan</th>
-                  <th>Nominal</th>
-                  <th style={{ textAlign: 'right' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredList.map((item) => (
-                  <tr key={item.id}>
-                    <td style={{ fontWeight: 600, color: '#0f172a' }}>{item.tanggal}</td>
-                    <td>
-                      <span className="badge badge-warning">{item.kategori}</span>
-                    </td>
-                    <td style={{ color: '#334155' }}>{item.keterangan || '-'}</td>
-                    <td style={{ fontWeight: 700, color: '#dc2626' }}>
-                      {formatRupiah(item.jumlah)}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button
-                          className="btn btn-secondary btn-icon"
-                          style={{ width: 30, height: 30 }}
-                          title="Edit"
-                          onClick={() => handleOpenEdit(item)}
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          className="btn btn-danger btn-icon"
-                          style={{ width: 30, height: 30 }}
-                          title="Hapus"
-                          onClick={() => {
-                            if (window.confirm('Hapus catatan pengeluaran ini?')) {
-                              onDeletePengeluaranLain(item.id);
-                            }
-                          }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="table-wrapper desktop-only-table">
+              <table className="table-modern">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Kategori</th>
+                    <th>Keterangan / Keperluan</th>
+                    <th>Nominal</th>
+                    <th style={{ textAlign: 'right' }}>Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredList.map((item) => (
+                    <tr key={item.id}>
+                      <td style={{ fontWeight: 600, color: '#0f172a' }}>{item.tanggal}</td>
+                      <td>
+                        <span className="badge badge-warning">{item.kategori}</span>
+                      </td>
+                      <td style={{ color: '#334155' }}>{item.keterangan || '-'}</td>
+                      <td style={{ fontWeight: 700, color: '#dc2626' }}>
+                        {formatRupiah(item.jumlah)}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button
+                            className="btn btn-secondary btn-icon"
+                            style={{ width: 30, height: 30 }}
+                            title="Edit"
+                            onClick={() => handleOpenEdit(item)}
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            className="btn btn-danger btn-icon"
+                            style={{ width: 30, height: 30 }}
+                            title="Hapus"
+                            onClick={() => {
+                              if (window.confirm('Hapus catatan pengeluaran ini?')) {
+                                onDeletePengeluaranLain(item.id);
+                              }
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View: Kartu Pengeluaran Lain */}
+            <div className="mobile-only-cards">
+              {filteredList.map((item) => (
+                <div key={item.id} className="mobile-data-card">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{item.tanggal}</span>
+                      <span className="badge badge-warning">{item.kategori}</span>
+                    </div>
+                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <button
+                        className="btn btn-secondary btn-icon"
+                        style={{ width: 34, height: 34 }}
+                        title="Edit"
+                        onClick={() => handleOpenEdit(item)}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        className="btn btn-danger btn-icon"
+                        style={{ width: 34, height: 34 }}
+                        title="Hapus"
+                        onClick={() => {
+                          if (window.confirm('Hapus catatan pengeluaran ini?')) {
+                            onDeletePengeluaranLain(item.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ color: '#334155', fontSize: '0.9rem', fontWeight: 500 }}>
+                    {item.keterangan || '-'}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Nominal Biaya</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#dc2626' }}>
+                      {formatRupiah(item.jumlah)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
