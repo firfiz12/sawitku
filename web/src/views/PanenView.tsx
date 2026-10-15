@@ -361,13 +361,15 @@ export const PanenView: React.FC<PanenViewProps> = ({
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button
                         className="btn btn-secondary btn-icon"
+                        style={{ width: 38, height: 38 }}
                         title="Edit"
                         onClick={() => handleOpenEdit(p)}
                       >
-                        <Edit2 size={15} />
+                        <Edit2 size={16} />
                       </button>
                       <button
                         className="btn btn-danger btn-icon"
+                        style={{ width: 38, height: 38 }}
                         title="Hapus"
                         onClick={() => {
                           if (window.confirm('Hapus transaksi panen ini?')) {
@@ -375,7 +377,7 @@ export const PanenView: React.FC<PanenViewProps> = ({
                           }
                         }}
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
