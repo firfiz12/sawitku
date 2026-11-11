@@ -11,9 +11,17 @@ import { PanenView } from './views/PanenView';
 import { PerawatanView } from './views/PerawatanView';
 import { PengeluaranLainView } from './views/PengeluaranLainView';
 import { LaporanView } from './views/LaporanView';
-import { dataService, setCurrentUser } from './services/dataService';
+import {
+  dataService,
+  setCurrentUser,
+  getLastUserId,
+  getLastUserEmail,
+  rememberLastUser,
+  forgetLastUser,
+} from './services/dataService';
 import type { DatabaseStatus } from './services/dataService';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 import type {
   Kebun,
   Panen,
@@ -28,7 +36,9 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // Mulai dari sesi terakhir yang tersimpan agar mode offline langsung memakai
+  // data akun sendiri (bukan seed data tamu).
+  const [userEmail, setUserEmail] = useState<string | null>(() => getLastUserEmail());
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [isDbStatusModalOpen, setIsDbStatusModalOpen] = useState(false);
 
@@ -47,7 +57,7 @@ export const App: React.FC = () => {
   const [panenList, setPanenList] = useState<Panen[]>([]);
   const [perawatanList, setPerawatanList] = useState<Perawatan[]>([]);
   const [pengeluaranLainList, setPengeluaranLainList] = useState<PengeluaranLain[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(() => getLastUserId());
 
   // Modal States
   const [isKebunModalOpen, setIsKebunModalOpen] = useState(false);
@@ -107,14 +117,30 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserEmail(session?.user?.email || null);
-      setUserId(session?.user?.id || null);
-    });
+    const applySession = (session: Session | null) => {
+      if (session?.user) {
+        rememberLastUser(session.user.id, session.user.email || null);
+        setUserEmail(session.user.email || null);
+        setUserId(session.user.id);
+        return;
+      }
+
+      // Tanpa sesi saat offline (mis. token gagal refresh): pertahankan akun
+      // terakhir supaya data lokalnya tetap tampil, bukan data tamu.
+      if (!navigator.onLine) {
+        setUserEmail(getLastUserEmail());
+        setUserId(getLastUserId());
+        return;
+      }
+
+      setUserEmail(null);
+      setUserId(null);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => applySession(session));
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user?.email || null);
-      setUserId(session?.user?.id || null);
+      applySession(session);
     });
 
     return () => {
@@ -265,9 +291,15 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
+    try {
+      if (isSupabaseConfigured) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.warn('Sign out gagal (offline), keluar secara lokal:', err);
     }
+    // Logout eksplisit = mode tamu; akun terakhir tidak lagi dipakai offline.
+    forgetLastUser();
     setUserEmail(null);
     setUserId(null);
   };
@@ -373,6 +405,7 @@ export const App: React.FC = () => {
           {currentTab === 'pengeluaran-lain' && (
             <PengeluaranLainView
               pengeluaranList={pengeluaranLainList}
+              kebunList={kebunList}
               onSavePengeluaranLain={handleSavePengeluaranLain}
               onDeletePengeluaranLain={handleDeletePengeluaranLain}
               isModalOpen={isPengeluaranLainModalOpen}

@@ -8,13 +8,14 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import type { PengeluaranLain } from '../types';
+import type { PengeluaranLain, Kebun } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
 import { UndoRedoButtons } from '../components/UndoRedoButtons';
 import { todayISO } from '../lib/date';
 
 interface PengeluaranLainViewProps {
   pengeluaranList: PengeluaranLain[];
+  kebunList: Kebun[];
   onSavePengeluaranLain: (item: Omit<PengeluaranLain, 'id'> & { id?: string }) => Promise<void>;
   onDeletePengeluaranLain: (id: string) => Promise<void>;
   isModalOpen: boolean;
@@ -28,6 +29,7 @@ interface PengeluaranLainViewProps {
 
 export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
   pengeluaranList,
+  kebunList,
   onSavePengeluaranLain,
   onDeletePengeluaranLain,
   isModalOpen,
@@ -39,10 +41,12 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
   onRedo,
 }) => {
   const [filterKategori, setFilterKategori] = useState<string>('all');
+  const [filterKebun, setFilterKebun] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>('');
   const [editingItem, setEditingItem] = useState<PengeluaranLain | null>(null);
 
   // Form State
+  const [kebunId, setKebunId] = useState(''); // '' = pengeluaran umum
   const [kategori, setKategori] = useState('Alat & Mesin');
   const [tanggal, setTanggal] = useState(todayISO);
   const [jumlah, setJumlah] = useState('');
@@ -54,6 +58,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
   if (isModalOpen !== prevModalOpen) {
     setPrevModalOpen(isModalOpen);
     if (isModalOpen && editingItem === null) {
+      setKebunId('');
       setKategori('Alat & Mesin');
       setTanggal(todayISO());
       setJumlah('');
@@ -70,11 +75,25 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
     'Alat & Mesin',
     'Transportasi & BBM',
     'Upah Lansir / Tambahan',
-    'Pemeliharaan Jalan & Parit',
     'Pajak / PBB / Izin',
     'Konsumsi Pekerja',
     'Lain-lain',
   ];
+
+  const getKebunName = (id?: string | null) => {
+    if (!id) return 'Umum';
+    return kebunList.find((k) => k.id === id)?.nama || 'Kebun';
+  };
+
+  // Sertakan kategori lama (mis. "Pemeliharaan Jalan & Parit") agar data
+  // historis tetap bisa difilter/diedit tanpa kehilangan nilainya.
+  const kategoriFilterOptions = Array.from(
+    new Set([...KATEGORI_OPTIONS, ...pengeluaranList.map((p) => p.kategori).filter(Boolean)])
+  );
+  const kategoriFormOptions =
+    editingItem && !kategoriFilterOptions.includes(editingItem.kategori)
+      ? [editingItem.kategori, ...KATEGORI_OPTIONS]
+      : KATEGORI_OPTIONS;
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -86,6 +105,8 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
 
   const filteredList = pengeluaranList.filter((item) => {
     if (filterKategori !== 'all' && item.kategori !== filterKategori) return false;
+    if (filterKebun === 'umum' && item.kebun_id) return false;
+    if (filterKebun !== 'all' && filterKebun !== 'umum' && item.kebun_id !== filterKebun) return false;
     if (filterMonth && !item.tanggal.startsWith(filterMonth)) return false;
     return true;
   });
@@ -94,6 +115,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
 
   const handleOpenAdd = () => {
     setEditingItem(null);
+    setKebunId('');
     setKategori('Alat & Mesin');
     setTanggal(todayISO());
     setJumlah('');
@@ -103,6 +125,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
 
   const handleOpenEdit = (item: PengeluaranLain) => {
     setEditingItem(item);
+    setKebunId(item.kebun_id || '');
     setKategori(item.kategori);
     setTanggal(item.tanggal);
     setJumlah(item.jumlah.toString());
@@ -116,6 +139,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
 
     await onSavePengeluaranLain({
       id: editingItem ? editingItem.id : undefined,
+      kebun_id: kebunId || null,
       kategori,
       tanggal,
       jumlah: parseFloat(jumlah) || 0,
@@ -162,6 +186,20 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
           </div>
 
           <select
+            id="filter-kebun-pengeluaran"
+            className="form-select filter-control"
+            style={{ width: 'auto', minWidth: 0 }}
+            value={filterKebun}
+            onChange={(e) => setFilterKebun(e.target.value)}
+          >
+            <option value="all">Semua Kebun</option>
+            <option value="umum">Pengeluaran Umum</option>
+            {kebunList.map((k) => (
+              <option key={k.id} value={k.id}>{k.nama}</option>
+            ))}
+          </select>
+
+          <select
             id="filter-kategori-pengeluaran"
             className="form-select filter-control"
             style={{ width: 'auto', minWidth: 0 }}
@@ -169,7 +207,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             onChange={(e) => setFilterKategori(e.target.value)}
           >
             <option value="all">Semua Kategori</option>
-            {KATEGORI_OPTIONS.map((k) => (
+            {kategoriFilterOptions.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
           </select>
@@ -180,12 +218,13 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             onChange={setFilterMonth}
           />
 
-          {(filterKategori !== 'all' || filterMonth !== '') && (
+          {(filterKategori !== 'all' || filterKebun !== 'all' || filterMonth !== '') && (
             <button
               className="btn btn-secondary"
               style={{ padding: '6px 12px', fontSize: '0.8rem' }}
               onClick={() => {
                 setFilterKategori('all');
+                setFilterKebun('all');
                 setFilterMonth('');
               }}
             >
@@ -216,7 +255,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             <Receipt size={48} color="#d97706" style={{ margin: '0 auto 16px' }} />
             <h3 style={{ color: '#0f172a' }}>Belum ada pengeluaran lain</h3>
             <p style={{ marginTop: 6, fontSize: '0.9rem' }}>
-              Catat pembelian alat (egrek, dodos, angkong), bbm solar, jalan kebun, atau upah lansir.
+              Catat pembelian alat (egrek, dodos, angkong), bbm solar, atau upah lansir. Biaya bersama bisa dicatat sebagai pengeluaran umum.
             </p>
           </div>
         ) : (
@@ -226,6 +265,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                 <thead>
                   <tr>
                     <th>Tanggal</th>
+                    <th>Kebun</th>
                     <th>Kategori</th>
                     <th>Keterangan / Keperluan</th>
                     <th>Nominal</th>
@@ -236,6 +276,11 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                   {filteredList.map((item) => (
                     <tr key={item.id}>
                       <td style={{ fontWeight: 600, color: '#0f172a' }}>{item.tanggal}</td>
+                      <td>
+                        <span className={`badge ${item.kebun_id ? 'badge-info' : 'badge-success'}`}>
+                          {getKebunName(item.kebun_id)}
+                        </span>
+                      </td>
                       <td>
                         <span className="badge badge-warning">{item.kategori}</span>
                       </td>
@@ -279,6 +324,9 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{item.tanggal}</span>
+                        <span className={`badge ${item.kebun_id ? 'badge-info' : 'badge-success'}`}>
+                          {getKebunName(item.kebun_id)}
+                        </span>
                         <span className="badge badge-warning">{item.kategori}</span>
                       </div>
                     </div>
@@ -333,6 +381,24 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
             </div>
 
             <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="form-kebun-pengeluaran">Kebun Terkait</label>
+                <select
+                  id="form-kebun-pengeluaran"
+                  className="form-select"
+                  value={kebunId}
+                  onChange={(e) => setKebunId(e.target.value)}
+                >
+                  <option value="">Pengeluaran Umum (dibagi rata ke semua kebun)</option>
+                  {kebunList.map((k) => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 6 }}>
+                  Pilih "Pengeluaran Umum" untuk biaya bersama; saat laporan per kebun, nominalnya dibagi rata sesuai jumlah kebun.
+                </p>
+              </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label" htmlFor="form-kategori-pengeluaran">Kategori Pengeluaran *</label>
@@ -342,7 +408,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
                     value={kategori}
                     onChange={(e) => setKategori(e.target.value)}
                   >
-                    {KATEGORI_OPTIONS.map((k) => (
+                    {kategoriFormOptions.map((k) => (
                       <option key={k} value={k}>{k}</option>
                     ))}
                   </select>

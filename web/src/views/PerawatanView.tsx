@@ -93,9 +93,11 @@ export const PerawatanView: React.FC<PerawatanViewProps> = ({
   const JENIS_OPTIONS = [
     'Pemupukan',
     'Semprot Gulma',
+    'Merambah',
     'Pruning / Tunas',
     'Kastrasi',
     'Piringan & Pasar Pikul',
+    'Pemeliharaan Jalan & Parit',
     'Pemberantasan Hama (Ulat Api / Kumbang)',
     'Lainnya',
   ];

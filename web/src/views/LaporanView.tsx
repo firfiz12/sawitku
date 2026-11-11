@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { Kebun, Panen, Perawatan, PengeluaranLain } from '../types';
 import { MonthFilter } from '../components/MonthFilter';
+import { allocatePengeluaranLain } from '../services/dataService';
 import { todayISO } from '../lib/date';
 
 interface LaporanViewProps {
@@ -78,11 +79,13 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     return true;
   });
 
-  const filteredPengeluaranLain = pengeluaranLainList.filter((p) => {
-    if (!isIncludedInPeriod(p.tanggal)) return false;
-    if (filterKebunId !== 'all' && p.kebun_id && p.kebun_id !== filterKebunId) return false;
-    return true;
-  });
+  // Pengeluaran umum (tanpa kebun) dibebankan rata saat laporan difilter per kebun.
+  const pengeluaranInPeriod = pengeluaranLainList.filter((p) => isIncludedInPeriod(p.tanggal));
+  const filteredPengeluaranLain = allocatePengeluaranLain(
+    pengeluaranInPeriod,
+    filterKebunId,
+    kebunList.length
+  );
 
   // Totals
   const totalBeratBersih = filteredPanen.reduce((acc, p) => acc + (Number(p.berat_bersih_kg) || 0), 0);
@@ -123,6 +126,11 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     const kPerawatan = filteredPerawatan
       .filter((p) => p.kebun_id === k.id)
       .reduce((acc, p) => acc + (Number(p.total_biaya) || 0), 0);
+    const kPengeluaranLain = allocatePengeluaranLain(
+      pengeluaranInPeriod,
+      k.id,
+      kebunList.length
+    ).reduce((acc, p) => acc + (Number(p.jumlah) || 0), 0);
     const yieldKgPerHa = k.luas_hektar > 0 ? kBerat / k.luas_hektar : 0;
 
     return {
@@ -130,6 +138,8 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       totalBerat: kBerat,
       totalPendapatan: kPendapatan,
       totalPerawatan: kPerawatan,
+      totalPengeluaranLain: kPengeluaranLain,
+      totalBiaya: kPerawatan + kPengeluaranLain,
       yieldKgPerHa,
       kontribusiPersen: totalBeratTBS > 0 ? (kBerat / totalBeratTBS) * 100 : 0,
     };
@@ -214,7 +224,10 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     });
 
     filteredPengeluaranLain.forEach((p) => {
-      csv += `"${p.tanggal}","Pengeluaran Lain","${p.kategori}","${p.keterangan || ''}",0,${p.jumlah}\n`;
+      const kebun = p.kebun_id
+        ? kebunList.find((item) => item.id === p.kebun_id)?.nama || 'Kebun'
+        : 'Umum';
+      csv += `"${p.tanggal}","Pengeluaran Lain","${p.kategori} (${kebun})","${p.keterangan || ''}",0,${p.jumlah}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -299,6 +312,12 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             >
               Reset
             </button>
+          )}
+
+          {filterKebunId !== 'all' && kebunList.length > 0 && (
+            <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>
+              Biaya umum dibagi ke {kebunList.length} kebun
+            </span>
           )}
         </div>
 
@@ -535,6 +554,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                 <th>Produktivitas (Kg/Ha)</th>
                 <th>Total Pendapatan</th>
                 <th>Biaya Perawatan</th>
+                <th>Pengeluaran Lain</th>
                 <th>Kontribusi %</th>
               </tr>
             </thead>
@@ -551,6 +571,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                   </td>
                   <td style={{ fontWeight: 700, color: '#047857' }}>{formatRupiah(item.totalPendapatan)}</td>
                   <td style={{ color: '#dc2626', fontWeight: 600 }}>{formatRupiah(item.totalPerawatan)}</td>
+                  <td style={{ color: '#b45309', fontWeight: 600 }}>{formatRupiah(item.totalPengeluaranLain)}</td>
                   <td>{item.kontribusiPersen.toFixed(1)}%</td>
                 </tr>
               ))}
@@ -601,12 +622,18 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                     {formatRupiah(item.totalPerawatan)}
                   </div>
                 </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Pengeluaran Lain</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#b45309' }}>
+                    {formatRupiah(item.totalPengeluaranLain)}
+                  </div>
+                </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', paddingTop: 2 }}>
                 <span style={{ color: '#64748b' }}>Estimasi Margin Kebun:</span>
-                <strong style={{ color: item.totalPendapatan - item.totalPerawatan >= 0 ? '#047857' : '#dc2626', fontWeight: 800 }}>
-                  {formatRupiah(item.totalPendapatan - item.totalPerawatan)}
+                <strong style={{ color: item.totalPendapatan - item.totalBiaya >= 0 ? '#047857' : '#dc2626', fontWeight: 800 }}>
+                  {formatRupiah(item.totalPendapatan - item.totalBiaya)}
                 </strong>
               </div>
             </div>

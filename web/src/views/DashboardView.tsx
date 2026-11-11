@@ -21,7 +21,7 @@ import type {
 } from '../types';
 import type { NavTab } from '../components/Sidebar';
 import { MonthFilter } from '../components/MonthFilter';
-import { dataService } from '../services/dataService';
+import { dataService, allocatePengeluaranLain } from '../services/dataService';
 
 interface DashboardViewProps {
   stats: DashboardStats;
@@ -113,7 +113,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const filteredKebun = filterKebunId === 'all' ? kebunList : kebunList.filter((k) => k.id === filterKebunId);
     const filteredPanen = filterKebunId === 'all' ? recentPanen : recentPanen.filter((p) => p.kebun_id === filterKebunId);
     const filteredPerawatan = filterKebunId === 'all' ? perawatanList : perawatanList.filter((p) => p.kebun_id === filterKebunId);
-    const filteredPengeluaranLain = filterKebunId === 'all' ? pengeluaranLainList : pengeluaranLainList.filter((pl) => pl.kebun_id === filterKebunId);
+    const filteredPengeluaranLain = filterKebunId === 'all'
+      ? pengeluaranLainList
+      : allocatePengeluaranLain(pengeluaranLainList, filterKebunId, kebunList.length);
 
     // Filter periode: bulan spesifik jika ada, atau tahun tertentu, atau keseluruhan
     const periodParam = dashboardMonth ? dashboardMonth : (selectedYear !== 'all' ? selectedYear : undefined);
@@ -256,6 +258,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, display: 'block', marginTop: 6 }}>
           Menampilkan: <strong style={{ color: '#0f172a' }}>{filterKebunId === 'all' ? 'Semua Kebun' : getKebunName(filterKebunId)}</strong> • <strong style={{ color: '#0f172a' }}>{periodLabel}</strong>
+          {filterKebunId !== 'all' && kebunList.length > 0 && (
+            <> • Biaya umum dibagi ke {kebunList.length} kebun</>
+          )}
         </span>
       </div>
 

@@ -141,6 +141,48 @@ export function getCurrentUserId(): string | null {
   return currentUserId;
 }
 
+// ===================== SESI TERAKHIR (untuk mode offline) =====================
+// Saat offline, aplikasi harus menampilkan data milik akun yang terakhir login,
+// bukan seed data tamu. Id & email sesi terakhir disimpan terpisah dari sesi
+// Supabase karena token bisa kedaluwarsa/gagal diperbarui tanpa jaringan.
+const LAST_USER_ID_KEY = 'sawitku_last_user_id';
+const LAST_USER_EMAIL_KEY = 'sawitku_last_user_email';
+
+export function getLastUserId(): string | null {
+  try {
+    return localStorage.getItem(LAST_USER_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function getLastUserEmail(): string | null {
+  try {
+    return localStorage.getItem(LAST_USER_EMAIL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function rememberLastUser(userId: string, email: string | null): void {
+  try {
+    localStorage.setItem(LAST_USER_ID_KEY, userId);
+    if (email) localStorage.setItem(LAST_USER_EMAIL_KEY, email);
+  } catch (err) {
+    console.error('Failed to save last user session:', err);
+  }
+}
+
+/** Dipanggil hanya saat logout eksplisit supaya mode tamu kembali aktif. */
+export function forgetLastUser(): void {
+  try {
+    localStorage.removeItem(LAST_USER_ID_KEY);
+    localStorage.removeItem(LAST_USER_EMAIL_KEY);
+  } catch (err) {
+    console.error('Failed to clear last user session:', err);
+  }
+}
+
 function localKey(table: LocalTable): string {
   return currentUserId ? `sawitku_local_${table}_u_${currentUserId}` : `sawitku_local_${table}`;
 }
@@ -302,6 +344,38 @@ async function syncPending(): Promise<number> {
   return remaining.length;
 }
 
+// ===================== ALOKASI PENGELUARAN UMUM =====================
+/**
+ * Pengeluaran tanpa kebun ("umum") dibebankan rata ke setiap kebun.
+ * Dipakai saat laporan/dashboard difilter ke satu kebun tertentu, supaya
+ * total biaya kebun tersebut memuat bagiannya dari pengeluaran umum.
+ *
+ * Catatan: hanya untuk perhitungan laporan. Data yang disimpan tetap satu
+ * catatan utuh dengan `kebun_id = null`.
+ */
+export function allocatePengeluaranLain(
+  list: PengeluaranLain[],
+  kebunId: string,
+  totalKebun: number
+): PengeluaranLain[] {
+  if (kebunId === 'all') return list;
+
+  return list
+    .filter((item) => item.kebun_id === kebunId || (!item.kebun_id && totalKebun > 0))
+    .map((item) => {
+      if (item.kebun_id === kebunId) return item;
+
+      const share = 1 / totalKebun;
+      const label = `Bagian umum 1/${totalKebun}`;
+      return {
+        ...item,
+        id: `${item.id}__alloc_${kebunId}`,
+        jumlah: (Number(item.jumlah) || 0) * share,
+        keterangan: item.keterangan ? `${item.keterangan} (${label})` : label,
+      };
+    });
+}
+
 export interface DatabaseStatus {
   isConfigured: boolean;
   isConnected: boolean;
@@ -396,6 +470,10 @@ export const dataService = {
 
   // ===================== KEBUN =====================
   async getKebun(): Promise<Kebun[]> {
+    // Offline: langsung pakai data lokal akun (tanpa menunggu jaringan gagal).
+    if (isOffline()) {
+      return getLocalData<Kebun>(localKey('kebun'), defaultData<Kebun>('kebun'));
+    }
     if (isSupabaseConfigured) {
       const user = await authedUser();
       if (user) {
@@ -528,6 +606,9 @@ export const dataService = {
 
   // ===================== PANEN =====================
   async getPanen(): Promise<Panen[]> {
+    if (isOffline()) {
+      return getLocalData<Panen>(localKey('panen'), defaultData<Panen>('panen'));
+    }
     if (isSupabaseConfigured) {
       const user = await authedUser();
       if (user) {
@@ -670,6 +751,9 @@ export const dataService = {
 
   // ===================== PERAWATAN =====================
   async getPerawatan(): Promise<Perawatan[]> {
+    if (isOffline()) {
+      return getLocalData<Perawatan>(localKey('perawatan'), defaultData<Perawatan>('perawatan'));
+    }
     if (isSupabaseConfigured) {
       const user = await authedUser();
       if (user) {
@@ -800,6 +884,9 @@ export const dataService = {
 
   // ===================== PENGELUARAN LAIN =====================
   async getPengeluaranLain(): Promise<PengeluaranLain[]> {
+    if (isOffline()) {
+      return getLocalData<PengeluaranLain>(localKey('pengeluaran_lain'), defaultData<PengeluaranLain>('pengeluaran_lain'));
+    }
     if (isSupabaseConfigured) {
       const user = await authedUser();
       if (user) {
