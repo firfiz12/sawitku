@@ -30,7 +30,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     panen: 'Catatan Panen',
     perawatan: 'Perawatan Kebun',
     'pengeluaran-lain': 'Pengeluaran Lain',
-    laporan: 'Laporan Keuangan',
+    laporan: 'Laporan & Analitik',
   };
 
   const notifSupported = typeof Notification !== 'undefined';
