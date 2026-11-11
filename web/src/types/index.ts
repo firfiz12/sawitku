@@ -65,14 +65,22 @@ export interface PengeluaranLain {
   updated_at?: string;
 }
 
+export type PengingatPanenStatus =
+  | 'LEWAT_JADWAL'
+  | 'HARI_INI'
+  | 'SEGERA'
+  | 'AMAN'
+  | 'SUDAH_DIPANEN'
+  | 'BELUM_ADA_JADWAL';
+
 export interface PengingatPanenInfo {
   kebunId: string;
   namaKebun: string;
   rotasiHari: number;
   terakhirPanen: string | null;
-  panenBerikutnya: string;
-  hariTersisa: number; // negatif = lewat jadwal
-  status: 'LEWAT_JADWAL' | 'HARI_INI' | 'SEGERA' | 'AMAN';
+  panenBerikutnya: string | null;
+  hariTersisa: number | null; // negatif = lewat jadwal, null = belum ada jadwal
+  status: PengingatPanenStatus;
 }
 
 export interface DashboardStats {

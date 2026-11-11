@@ -3,6 +3,7 @@ import {
   Trees,
   Sprout,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
   Clock,
   ArrowUpRight,
@@ -10,24 +11,34 @@ import {
   ChevronRight,
   Filter,
   Receipt,
+  Wrench,
+  Lightbulb,
+  Info,
+  ArrowUpDown,
+  CalendarDays,
+  Minus,
 } from 'lucide-react';
 import type {
   Kebun,
   Panen,
   Perawatan,
   PengeluaranLain,
-  PengingatPanenInfo,
+  PengingatPanenStatus,
   DashboardStats,
 } from '../types';
 import type { NavTab } from '../components/Sidebar';
 import { MonthFilter } from '../components/MonthFilter';
 import { dataService, allocatePengeluaranLain } from '../services/dataService';
+import { currentYear, currentYearMonth } from '../lib/date';
+import { ProductionTrendChart } from '../components/ReportCharts';
+import type { TrendPoint } from '../components/ReportCharts';
+import './DashboardView.css';
 
 interface DashboardViewProps {
   stats: DashboardStats;
   dashboardMonth: string; // YYYY-MM, kosong = bulan berjalan
   onDashboardMonthChange: (ym: string) => void;
-  pengingatList: PengingatPanenInfo[];
+  pengingatList: import('../types').PengingatPanenInfo[];
   recentPanen: Panen[];
   kebunList: Kebun[];
   perawatanList?: Perawatan[];
@@ -39,8 +50,181 @@ interface DashboardViewProps {
   onOpenKebunModal: () => void;
 }
 
+type HarvestStatus =
+  | 'TERLAMBAT'
+  | 'SEGERA'
+  | 'MENDATANG'
+  | 'SUDAH_DIPANEN'
+  | 'BELUM_ADA_JADWAL';
+
+interface HarvestReminder {
+  kebunId: string;
+  namaKebun: string;
+  rotasiHari: number;
+  terakhirPanen: string | null;
+  panenBerikutnya: string | null;
+  hariTersisa: number | null;
+  status: HarvestStatus;
+}
+
+type InsightTone = 'danger' | 'warning' | 'positive' | 'neutral';
+
+interface DashboardInsight {
+  id: string;
+  tone: InsightTone;
+  title: string;
+  description: string;
+  basis: string;
+}
+
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+const MONTH_NAMES = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+const HARVEST_STATUS_META: Record<
+  HarvestStatus,
+  { label: string; className: string; priority: number }
+> = {
+  TERLAMBAT: { label: 'Terlambat', className: 'dash-status danger', priority: 0 },
+  SEGERA: { label: 'Segera Panen', className: 'dash-status warning', priority: 1 },
+  BELUM_ADA_JADWAL: {
+    label: 'Belum Ada Jadwal',
+    className: 'dash-status neutral',
+    priority: 2,
+  },
+  SUDAH_DIPANEN: {
+    label: 'Sudah Dipanen',
+    className: 'dash-status success',
+    priority: 3,
+  },
+  MENDATANG: {
+    label: 'Jadwal Mendatang',
+    className: 'dash-status info',
+    priority: 4,
+  },
+};
+
+function formatRupiah(value: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('id-ID').format(value);
+}
+
+function formatDecimal(value: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatDateID(value: string | null): string {
+  if (!value) return '—';
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return `${String(day).padStart(2, '0')} ${MONTHS_SHORT[month - 1]} ${year}`;
+}
+
+function shiftMonth(yearMonth: string, delta: number): string {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const date = new Date(year, (month || 1) - 1 + delta, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function isInPeriod(dateStr: string, month: string, year: string): boolean {
+  if (!dateStr) return false;
+  if (month) return dateStr.startsWith(month);
+  if (year !== 'all') return dateStr.startsWith(year);
+  return true;
+}
+
+function toHarvestStatus(status: PengingatPanenStatus): HarvestStatus {
+  switch (status) {
+    case 'LEWAT_JADWAL':
+      return 'TERLAMBAT';
+    case 'HARI_INI':
+    case 'SEGERA':
+      return 'SEGERA';
+    case 'SUDAH_DIPANEN':
+      return 'SUDAH_DIPANEN';
+    case 'BELUM_ADA_JADWAL':
+      return 'BELUM_ADA_JADWAL';
+    default:
+      return 'MENDATANG';
+  }
+}
+
+function harvestDaysText(reminder: HarvestReminder): string {
+  switch (reminder.status) {
+    case 'TERLAMBAT':
+      return `${Math.abs(reminder.hariTersisa ?? 0)} hari terlambat`;
+    case 'SEGERA':
+      return (reminder.hariTersisa ?? 0) <= 0
+        ? 'Jadwal hari ini'
+        : `${reminder.hariTersisa} hari lagi`;
+    case 'MENDATANG':
+      return `${reminder.hariTersisa ?? 0} hari lagi`;
+    case 'SUDAH_DIPANEN':
+      return 'Panen tercatat hari ini';
+    default:
+      return 'Belum ada catatan panen';
+  }
+}
+
+const EmptyState: React.FC<{ title: string; description: string }> = ({
+  title,
+  description,
+}) => (
+  <div className="dash-empty">
+    <strong>{title}</strong>
+    <span>{description}</span>
+  </div>
+);
+
+function renderInsightIcon(tone: InsightTone): React.ReactNode {
+  switch (tone) {
+    case 'danger':
+      return <AlertTriangle size={18} color="#b91c1c" />;
+    case 'warning':
+      return <Wrench size={18} color="#b45309" />;
+    case 'positive':
+      return <TrendingUp size={18} color="#047857" />;
+    default:
+      return <Lightbulb size={18} color="#0369a1" />;
+  }
+}
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  stats,
   dashboardMonth,
   onDashboardMonthChange,
   pengingatList,
@@ -56,154 +240,481 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [filterKebunId, setFilterKebunId] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all'); // 'all' atau 'YYYY'
-
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
+  const [blockSort, setBlockSort] = useState<'desc' | 'asc'>('desc');
 
   const getKebunName = (id: string) => {
-    const k = kebunList.find((item) => item.id === id);
-    return k ? k.nama : 'Kebun';
+    const kebun = kebunList.find((item) => item.id === id);
+    return kebun ? kebun.nama : 'Kebun';
   };
 
   // Daftar tahun yang tersedia dari data riwayat
   const availableYears = useMemo(() => {
-    const currentY = new Date().getFullYear();
+    const currentY = Number(currentYear());
     const yearSet = new Set<number>([currentY]);
-    recentPanen.forEach((p) => {
-      if (p.tanggal) {
-        const y = parseInt(p.tanggal.slice(0, 4), 10);
-        if (!isNaN(y)) yearSet.add(y);
-      }
-    });
-    perawatanList.forEach((p) => {
-      if (p.tanggal) {
-        const y = parseInt(p.tanggal.slice(0, 4), 10);
-        if (!isNaN(y)) yearSet.add(y);
-      }
-    });
-    pengeluaranLainList.forEach((p) => {
-      if (p.tanggal) {
-        const y = parseInt(p.tanggal.slice(0, 4), 10);
-        if (!isNaN(y)) yearSet.add(y);
-      }
-    });
+    const collect = (items: Array<{ tanggal: string }>) => {
+      items.forEach((item) => {
+        if (!item.tanggal) return;
+        const year = parseInt(item.tanggal.slice(0, 4), 10);
+        if (!Number.isNaN(year)) yearSet.add(year);
+      });
+    };
+    collect(recentPanen);
+    collect(perawatanList);
+    collect(pengeluaranLainList);
     return Array.from(yearSet).sort((a, b) => b - a);
   }, [recentPanen, perawatanList, pengeluaranLainList]);
 
-  const periodLabel = dashboardMonth
-    ? (() => {
-        const [y, m] = dashboardMonth.split('-').map(Number);
-        const names = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        return `${names[(m || 1) - 1]} ${y}`;
-      })()
-    : selectedYear !== 'all'
-    ? `Tahun ${selectedYear}`
-    : 'Semua Riwayat (Akumulasi)';
-
-  // Stats yang dihitung berdasarkan filter kebun dan periode
-  const effectiveStats = useMemo(() => {
-    if (filterKebunId === 'all' && !dashboardMonth && selectedYear === 'all') {
-      return stats;
+  const periodLabel = useMemo(() => {
+    if (dashboardMonth) {
+      const [year, month] = dashboardMonth.split('-').map(Number);
+      return `${MONTHS_SHORT[(month || 1) - 1]} ${year}`;
     }
-    const filteredKebun = filterKebunId === 'all' ? kebunList : kebunList.filter((k) => k.id === filterKebunId);
-    const filteredPanen = filterKebunId === 'all' ? recentPanen : recentPanen.filter((p) => p.kebun_id === filterKebunId);
-    const filteredPerawatan = filterKebunId === 'all' ? perawatanList : perawatanList.filter((p) => p.kebun_id === filterKebunId);
-    const filteredPengeluaranLain = filterKebunId === 'all'
-      ? pengeluaranLainList
-      : allocatePengeluaranLain(pengeluaranLainList, filterKebunId, kebunList.length);
+    if (selectedYear !== 'all') return `Tahun ${selectedYear}`;
+    return 'Semua Riwayat (Akumulasi)';
+  }, [dashboardMonth, selectedYear]);
 
-    // Filter periode: bulan spesifik jika ada, atau tahun tertentu, atau keseluruhan
-    const periodParam = dashboardMonth ? dashboardMonth : (selectedYear !== 'all' ? selectedYear : undefined);
-
-    return dataService.calculateStats(
-      filteredKebun,
-      filteredPanen,
-      filteredPerawatan,
-      filteredPengeluaranLain,
-      periodParam
-    );
-  }, [filterKebunId, stats, kebunList, recentPanen, perawatanList, pengeluaranLainList, dashboardMonth, selectedYear]);
-
-  const filteredPengingat = useMemo(() => {
-    if (filterKebunId === 'all') return pengingatList;
-    return pengingatList.filter((p) => p.kebunId === filterKebunId);
-  }, [filterKebunId, pengingatList]);
-
-  const filteredPanenList = useMemo(() => {
-    if (filterKebunId === 'all') return recentPanen;
-    return recentPanen.filter((p) => p.kebun_id === filterKebunId);
-  }, [filterKebunId, recentPanen]);
-
-  const overdueList = filteredPengingat.filter(
-    (p) => p.status === 'LEWAT_JADWAL' || p.status === 'HARI_INI'
+  const filteredKebunList = useMemo(
+    () =>
+      filterKebunId === 'all'
+        ? kebunList
+        : kebunList.filter((kebun) => kebun.id === filterKebunId),
+    [filterKebunId, kebunList]
   );
 
+  const panenByKebun = useMemo(
+    () =>
+      filterKebunId === 'all'
+        ? recentPanen
+        : recentPanen.filter((item) => item.kebun_id === filterKebunId),
+    [filterKebunId, recentPanen]
+  );
+
+  const perawatanByKebun = useMemo(
+    () =>
+      filterKebunId === 'all'
+        ? perawatanList
+        : perawatanList.filter((item) => item.kebun_id === filterKebunId),
+    [filterKebunId, perawatanList]
+  );
+
+  const pengeluaranByKebun = useMemo(
+    () =>
+      filterKebunId === 'all'
+        ? pengeluaranLainList
+        : allocatePengeluaranLain(
+            pengeluaranLainList,
+            filterKebunId,
+            kebunList.length
+          ),
+    [filterKebunId, pengeluaranLainList, kebunList.length]
+  );
+
+  const panenInPeriod = useMemo(
+    () =>
+      panenByKebun.filter((item) =>
+        isInPeriod(item.tanggal, dashboardMonth, selectedYear)
+      ),
+    [panenByKebun, dashboardMonth, selectedYear]
+  );
+
+  const perawatanInPeriod = useMemo(
+    () =>
+      perawatanByKebun.filter((item) =>
+        isInPeriod(item.tanggal, dashboardMonth, selectedYear)
+      ),
+    [perawatanByKebun, dashboardMonth, selectedYear]
+  );
+
+  const pengeluaranInPeriod = useMemo(
+    () =>
+      pengeluaranByKebun.filter((item) =>
+        isInPeriod(item.tanggal, dashboardMonth, selectedYear)
+      ),
+    [pengeluaranByKebun, dashboardMonth, selectedYear]
+  );
+
+  const effectiveStats = useMemo(
+    () =>
+      dataService.calculateStats(
+        filteredKebunList,
+        panenInPeriod,
+        perawatanInPeriod,
+        pengeluaranInPeriod
+      ),
+    [filteredKebunList, panenInPeriod, perawatanInPeriod, pengeluaranInPeriod]
+  );
+
+  const totalProduction = useMemo(
+    () =>
+      panenInPeriod.reduce(
+        (total, item) =>
+          total +
+          (Number(item.berat_bersih_kg) || 0) +
+          (Number(item.berat_brondolan_kg) || 0),
+        0
+      ),
+    [panenInPeriod]
+  );
+
+  const hasPanenData = panenInPeriod.length > 0;
+  const profitMargin =
+    effectiveStats.totalPendapatanBulanIni > 0
+      ? (effectiveStats.labaBersihBulanIni /
+          effectiveStats.totalPendapatanBulanIni) *
+        100
+      : null;
+
+  const harvestReminders = useMemo<HarvestReminder[]>(() => {
+    const filtered =
+      filterKebunId === 'all'
+        ? pengingatList
+        : pengingatList.filter((item) => item.kebunId === filterKebunId);
+
+    return filtered
+      .map<HarvestReminder>((item) => ({
+        kebunId: item.kebunId,
+        namaKebun: item.namaKebun,
+        rotasiHari: item.rotasiHari,
+        terakhirPanen: item.terakhirPanen,
+        panenBerikutnya: item.panenBerikutnya,
+        hariTersisa: item.hariTersisa,
+        status: toHarvestStatus(item.status),
+      }))
+      .sort((a, b) => {
+        const priorityDiff =
+          HARVEST_STATUS_META[a.status].priority -
+          HARVEST_STATUS_META[b.status].priority;
+        if (priorityDiff !== 0) return priorityDiff;
+        return (
+          (a.hariTersisa ?? Number.MAX_SAFE_INTEGER) -
+          (b.hariTersisa ?? Number.MAX_SAFE_INTEGER)
+        );
+      });
+  }, [filterKebunId, pengingatList]);
+
+  const overdueHarvest = useMemo(
+    () => harvestReminders.filter((item) => item.status === 'TERLAMBAT'),
+    [harvestReminders]
+  );
+
+  const latestHarvests = useMemo(
+    () =>
+      [...panenInPeriod]
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal))
+        .slice(0, 5),
+    [panenInPeriod]
+  );
+
+  const maintenanceOverview = useMemo(() => {
+    const latestByKebun = new Map<string, Perawatan>();
+    perawatanByKebun.forEach((item) => {
+      const current = latestByKebun.get(item.kebun_id);
+      if (!current || item.tanggal > current.tanggal) {
+        latestByKebun.set(item.kebun_id, item);
+      }
+    });
+
+    return filteredKebunList
+      .map((kebun) => ({
+        kebun,
+        last: latestByKebun.get(kebun.id) ?? null,
+      }))
+      .sort((a, b) => {
+        if (!a.last && !b.last) return a.kebun.nama.localeCompare(b.kebun.nama);
+        if (!a.last) return 1;
+        if (!b.last) return -1;
+        return b.last.tanggal.localeCompare(a.last.tanggal);
+      });
+  }, [filteredKebunList, perawatanByKebun]);
+
+  const blockPerformance = useMemo(() => {
+    const rows = filteredKebunList.map((kebun) => {
+      const kebunPanen = panenInPeriod.filter(
+        (item) => item.kebun_id === kebun.id
+      );
+      const production = kebunPanen.reduce(
+        (total, item) =>
+          total +
+          (Number(item.berat_bersih_kg) || 0) +
+          (Number(item.berat_brondolan_kg) || 0),
+        0
+      );
+      const luas = Number(kebun.luas_hektar) || 0;
+      const hasPanen = kebunPanen.length > 0;
+      const yieldKgPerHa =
+        luas > 0 && hasPanen ? production / luas : null;
+
+      return { kebun, luas, production, hasPanen, yieldKgPerHa };
+    });
+
+    rows.sort((a, b) => {
+      if (a.yieldKgPerHa === null && b.yieldKgPerHa === null) {
+        return a.kebun.nama.localeCompare(b.kebun.nama);
+      }
+      if (a.yieldKgPerHa === null) return 1;
+      if (b.yieldKgPerHa === null) return -1;
+      return blockSort === 'desc'
+        ? b.yieldKgPerHa - a.yieldKgPerHa
+        : a.yieldKgPerHa - b.yieldKgPerHa;
+    });
+
+    return rows;
+  }, [filteredKebunList, panenInPeriod, blockSort]);
+
+  const maxYield = useMemo(
+    () =>
+      Math.max(
+        0,
+        ...blockPerformance.map((row) => row.yieldKgPerHa ?? 0)
+      ) || 1,
+    [blockPerformance]
+  );
+
+  const trendEndMonth = useMemo(() => {
+    if (dashboardMonth) return dashboardMonth;
+    if (selectedYear !== 'all') {
+      const currentY = currentYear();
+      return selectedYear === currentY
+        ? currentYearMonth()
+        : `${selectedYear}-12`;
+    }
+    return currentYearMonth();
+  }, [dashboardMonth, selectedYear]);
+
+  const productionTrend = useMemo<TrendPoint[]>(() => {
+    const months: string[] = [];
+    for (let index = 5; index >= 0; index -= 1) {
+      months.push(shiftMonth(trendEndMonth, -index));
+    }
+
+    return months.map((yearMonth) => {
+      const [year, month] = yearMonth.split('-').map(Number);
+      const monthPanen = panenByKebun.filter((item) =>
+        item.tanggal.startsWith(yearMonth)
+      );
+      const production = monthPanen.reduce(
+        (total, item) =>
+          total +
+          (Number(item.berat_bersih_kg) || 0) +
+          (Number(item.berat_brondolan_kg) || 0),
+        0
+      );
+
+      return {
+        key: yearMonth,
+        label: `${MONTHS_SHORT[month - 1]} '${String(year).slice(-2)}`,
+        fullLabel: `${MONTH_NAMES[month - 1]} ${year}`,
+        pendapatan: 0,
+        pengeluaran: 0,
+        laba: 0,
+        production,
+        hasProduction: monthPanen.length > 0,
+      };
+    });
+  }, [panenByKebun, trendEndMonth]);
+
+  const trendIndicator = useMemo(() => {
+    const last = productionTrend[productionTrend.length - 1];
+    const previous = productionTrend[productionTrend.length - 2];
+
+    if (!last || !previous) {
+      return {
+        tone: 'neutral' as InsightTone,
+        label: 'Belum cukup data',
+        detail: 'Butuh minimal dua bulan data untuk membandingkan produksi.',
+      };
+    }
+
+    if (!last.hasProduction || !previous.hasProduction) {
+      const missing = !last.hasProduction ? last.fullLabel : previous.fullLabel;
+      return {
+        tone: 'neutral' as InsightTone,
+        label: 'Belum bisa dibandingkan',
+        detail: `Belum ada catatan panen pada ${missing}.`,
+      };
+    }
+
+    if (previous.production === 0) {
+      if (last.production > 0) {
+        return {
+          tone: 'positive' as InsightTone,
+          label: 'Produksi mulai tercatat',
+          detail: `${previous.fullLabel}: 0 kg → ${last.fullLabel}: ${formatNumber(
+            last.production
+          )} kg.`,
+        };
+      }
+      return {
+        tone: 'neutral' as InsightTone,
+        label: 'Tidak ada perubahan',
+        detail: 'Kedua bulan tercatat 0 kg.',
+      };
+    }
+
+    const delta =
+      ((last.production - previous.production) / previous.production) * 100;
+
+    if (Math.abs(delta) < 0.05) {
+      return {
+        tone: 'neutral' as InsightTone,
+        label: 'Produksi stabil',
+        detail: `${previous.fullLabel} dan ${last.fullLabel} sama-sama ${formatNumber(
+          last.production
+        )} kg.`,
+      };
+    }
+
+    return {
+      tone: (delta > 0 ? 'positive' : 'danger') as InsightTone,
+      label: `Produksi ${delta > 0 ? 'naik' : 'turun'} ${Math.abs(delta).toFixed(
+        1
+      )}%`,
+      detail: `${previous.fullLabel}: ${formatNumber(
+        previous.production
+      )} kg → ${last.fullLabel}: ${formatNumber(last.production)} kg.`,
+    };
+  }, [productionTrend]);
+
+  const insights = useMemo<DashboardInsight[]>(() => {
+    const list: DashboardInsight[] = [];
+
+    if (overdueHarvest.length > 0) {
+      list.push({
+        id: 'overdue-harvest',
+        tone: 'danger',
+        title: `${overdueHarvest.length} blok terlambat panen`,
+        description: overdueHarvest
+          .map((item) => item.namaKebun)
+          .join(', '),
+        basis:
+          'Dasar: jadwal panen berikutnya (panen terakhir + rotasi) sudah lewat dari hari ini.',
+      });
+    }
+
+    const withoutMaintenance = maintenanceOverview.filter(
+      (row) => !row.last
+    );
+    if (withoutMaintenance.length > 0) {
+      list.push({
+        id: 'no-maintenance',
+        tone: 'warning',
+        title: `${withoutMaintenance.length} blok belum punya catatan perawatan`,
+        description: withoutMaintenance
+          .map((row) => row.kebun.nama)
+          .join(', '),
+        basis: 'Dasar: tidak ada transaksi perawatan tercatat untuk blok tersebut.',
+      });
+    }
+
+    const withYield = blockPerformance.filter(
+      (row) => row.yieldKgPerHa !== null
+    );
+    if (withYield.length > 0) {
+      const best = [...withYield].sort(
+        (a, b) => (b.yieldKgPerHa ?? 0) - (a.yieldKgPerHa ?? 0)
+      )[0];
+      list.push({
+        id: 'best-yield',
+        tone: 'positive',
+        title: `Produktivitas tertinggi: ${best.kebun.nama}`,
+        description: `${formatNumber(
+          best.yieldKgPerHa ?? 0
+        )} kg/ha dari ${formatNumber(best.production)} kg produksi.`,
+        basis: `Dasar: ${formatNumber(best.production)} kg ÷ ${formatDecimal(
+          best.luas
+        )} Ha pada ${periodLabel}.`,
+      });
+    }
+
+    if (trendIndicator.tone !== 'neutral') {
+      list.push({
+        id: 'production-trend',
+        tone: trendIndicator.tone,
+        title: trendIndicator.label,
+        description: trendIndicator.detail,
+        basis:
+          'Dasar: perbandingan total produksi dua bulan terakhir pada grafik tren.',
+      });
+    } else if (productionTrend.some((point) => point.hasProduction)) {
+      list.push({
+        id: 'production-trend-neutral',
+        tone: 'neutral',
+        title: 'Tren produksi belum bisa disimpulkan',
+        description: trendIndicator.detail,
+        basis: 'Dasar: data bulanan belum lengkap untuk dibandingkan.',
+      });
+    }
+
+    return list;
+  }, [
+    overdueHarvest,
+    maintenanceOverview,
+    blockPerformance,
+    trendIndicator,
+    productionTrend,
+    periodLabel,
+  ]);
+
+  const hasActiveFilter =
+    filterKebunId !== 'all' || selectedYear !== 'all' || dashboardMonth !== '';
+
   return (
-    <div>
-      {/* Pengingat Rotasi Panen Alert Banner */}
-      {overdueList.length > 0 && (
-        <div className="harvest-alert-banner" id="banner-harvest-alerts" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: '#fee2e2',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <AlertTriangle size={24} color="#dc2626" />
+    <div className="dash-page">
+      {/* Notifikasi rotasi panen */}
+      {overdueHarvest.length > 0 && (
+        <div
+          className="harvest-alert-banner dash-alert"
+          id="banner-harvest-alerts"
+        >
+          <div className="dash-alert-main">
+            <div className="dash-alert-icon">
+              <AlertTriangle size={22} color="#dc2626" />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1rem', color: '#991b1b' }}>
-                Pemberitahuan: {overdueList.length} Blok Kebun Siap / Lewat Jadwal Panen!
+              <div className="dash-alert-title">
+                Pemberitahuan: {overdueHarvest.length} blok siap / lewat jadwal
+                panen
               </div>
-              <div style={{ fontSize: '0.84rem', color: '#b45309', marginTop: 2, fontWeight: 500 }}>
-                {overdueList.map((k) => `${k.namaKebun} (${k.hariTersisa < 0 ? `${Math.abs(k.hariTersisa)} hari terlambat` : 'Jadwal hari ini'})`).join(' • ')}
+              <div className="dash-alert-sub">
+                {overdueHarvest
+                  .map(
+                    (item) =>
+                      `${item.namaKebun} (${
+                        Math.abs(item.hariTersisa ?? 0)
+                      } hari terlambat)`
+                  )
+                  .join(' • ')}
               </div>
             </div>
           </div>
-          <button
-            className="btn btn-primary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', flexShrink: 0 }}
-            onClick={() => onOpenPanenModal(overdueList[0]?.kebunId)}
-          >
-            <Sprout size={16} />
-            <span>Panen Sekarang</span>
-          </button>
+          <span className="dash-alert-note">
+            Tindak lanjut tersedia pada kartu Rotasi &amp; Pengingat Panen.
+          </span>
         </div>
       )}
 
-      {/* Filter Bar Dashboard (Periode & Kebun) */}
-      <div className="card filter-bar" style={{ padding: '14px 20px', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Filter kebun & periode */}
+      <div className="card filter-bar dash-filter-bar">
+        <div className="dash-filter-controls">
+          <div className="dash-filter-label">
             <Filter size={16} color="#94a3b8" />
-            <span style={{ fontSize: '0.86rem', color: '#64748b', fontWeight: 600 }}>Filter:</span>
+            <span>Filter:</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="dash-filter-group">
             <Trees size={16} color="#059669" />
             <select
               id="filter-kebun-dashboard"
               className="form-select filter-control"
-              style={{ width: 'auto', minWidth: 0 }}
               value={filterKebunId}
-              onChange={(e) => setFilterKebunId(e.target.value)}
+              onChange={(event) => setFilterKebunId(event.target.value)}
               title="Filter Blok Kebun"
             >
               <option value="all">Semua Blok Kebun</option>
-              {kebunList.map((k) => (
-                <option key={k.id} value={k.id}>{k.nama} ({k.luas_hektar} Ha)</option>
+              {kebunList.map((kebun) => (
+                <option key={kebun.id} value={kebun.id}>
+                  {kebun.nama} ({kebun.luas_hektar} Ha)
+                </option>
               ))}
             </select>
           </div>
@@ -211,40 +722,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <select
             id="filter-tahun-dashboard"
             className="form-select filter-control"
-            style={{ width: 'auto', minWidth: 0 }}
             value={selectedYear}
-            onChange={(e) => {
-              const y = e.target.value;
-              setSelectedYear(y);
-              if (y === 'all') {
+            onChange={(event) => {
+              const year = event.target.value;
+              setSelectedYear(year);
+              if (year === 'all') {
                 onDashboardMonthChange('');
-              } else if (dashboardMonth && !dashboardMonth.startsWith(y)) {
+              } else if (
+                dashboardMonth &&
+                !dashboardMonth.startsWith(year)
+              ) {
                 onDashboardMonthChange('');
               }
             }}
             title="Filter Tahun"
           >
             <option value="all">Semua Tahun</option>
-            {availableYears.map((yr) => (
-              <option key={yr} value={String(yr)}>Tahun {yr}</option>
+            {availableYears.map((year) => (
+              <option key={year} value={String(year)}>
+                Tahun {year}
+              </option>
             ))}
           </select>
 
           <MonthFilter
             id="filter-month-dashboard"
             value={dashboardMonth}
-            onChange={(ym) => {
-              onDashboardMonthChange(ym);
-              if (ym) {
-                setSelectedYear(ym.slice(0, 4));
+            onChange={(yearMonth) => {
+              onDashboardMonthChange(yearMonth);
+              if (yearMonth) {
+                setSelectedYear(yearMonth.slice(0, 4));
               }
             }}
           />
 
-          {(filterKebunId !== 'all' || selectedYear !== 'all' || dashboardMonth !== '') && (
+          {hasActiveFilter && (
             <button
-              className="btn btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+              type="button"
+              className="btn btn-secondary dash-reset-btn"
               onClick={() => {
                 setFilterKebunId('all');
                 setSelectedYear('all');
@@ -256,52 +771,98 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, display: 'block', marginTop: 6 }}>
-          Menampilkan: <strong style={{ color: '#0f172a' }}>{filterKebunId === 'all' ? 'Semua Kebun' : getKebunName(filterKebunId)}</strong> • <strong style={{ color: '#0f172a' }}>{periodLabel}</strong>
+        <span className="dash-filter-summary">
+          Menampilkan:{' '}
+          <strong>
+            {filterKebunId === 'all'
+              ? 'Semua Kebun'
+              : getKebunName(filterKebunId)}
+          </strong>{' '}
+          • <strong>{periodLabel}</strong>
           {filterKebunId !== 'all' && kebunList.length > 0 && (
             <> • Biaya umum dibagi ke {kebunList.length} kebun</>
           )}
         </span>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* Empat kartu statistik utama */}
       <div className="stat-grid">
         <div className="card stat-card">
           <div className="stat-header">
-            <div className="stat-icon" style={{ background: 'rgba(5, 150, 105, 0.12)' }}>
+            <div
+              className="stat-icon"
+              style={{ background: 'rgba(5, 150, 105, 0.12)' }}
+            >
               <Trees size={20} color="#059669" />
             </div>
             <div className="stat-label">Total Luas Kebun</div>
           </div>
-          <div className="stat-value">{effectiveStats.totalLuasHa.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b' }}>Ha</span></div>
+          <div className="stat-value">
+            {effectiveStats.totalLuasHa.toFixed(1)}{' '}
+            <span style={{ fontSize: '1rem', color: '#64748b' }}>Ha</span>
+          </div>
           <div className="stat-subtext">
-            <span style={{ fontWeight: 600, color: '#0f172a' }}>{effectiveStats.totalKebun}</span>
+            <span style={{ fontWeight: 600, color: '#0f172a' }}>
+              {effectiveStats.totalKebun}
+            </span>
             <span>Blok kebun aktif</span>
           </div>
         </div>
 
         <div className="card stat-card">
           <div className="stat-header">
-            <div className="stat-icon" style={{ background: 'rgba(217, 119, 6, 0.12)' }}>
+            <div
+              className="stat-icon"
+              style={{ background: 'rgba(217, 119, 6, 0.12)' }}
+            >
               <Sprout size={20} color="#d97706" />
             </div>
-            <div className="stat-label">{dashboardMonth || selectedYear !== 'all' ? `Produksi (${periodLabel})` : 'Total Produksi TBS'}</div>
+            <div className="stat-label">
+              {dashboardMonth || selectedYear !== 'all'
+                ? `Produksi (${periodLabel})`
+                : 'Total Produksi TBS'}
+            </div>
           </div>
           <div className="stat-value">
-            {effectiveStats.totalProduksiBulanIniKg.toLocaleString('id-ID')} <span style={{ fontSize: '1rem', color: '#64748b' }}>Kg</span>
+            {hasPanenData ? (
+              <>
+                {formatNumber(totalProduction)}{' '}
+                <span style={{ fontSize: '1rem', color: '#64748b' }}>Kg</span>
+              </>
+            ) : (
+              <span style={{ color: '#94a3b8' }}>—</span>
+            )}
           </div>
           <div className="stat-subtext">
-            <TrendingUp size={14} color="#059669" />
-            <span style={{ color: '#047857', fontWeight: 600 }}>TBS Sawit Segar</span>
+            {hasPanenData ? (
+              <>
+                <TrendingUp size={14} color="#059669" />
+                <span style={{ color: '#047857', fontWeight: 600 }}>
+                  TBS + brondolan
+                </span>
+              </>
+            ) : (
+              <>
+                <Info size={14} color="#94a3b8" />
+                <span>Belum ada catatan panen</span>
+              </>
+            )}
           </div>
         </div>
 
         <div className="card stat-card">
           <div className="stat-header">
-            <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.12)' }}>
+            <div
+              className="stat-icon"
+              style={{ background: 'rgba(16, 185, 129, 0.12)' }}
+            >
               <ArrowUpRight size={20} color="#059669" />
             </div>
-            <div className="stat-label">{dashboardMonth || selectedYear !== 'all' ? `Pendapatan (${periodLabel})` : 'Total Pendapatan TBS'}</div>
+            <div className="stat-label">
+              {dashboardMonth || selectedYear !== 'all'
+                ? `Pendapatan (${periodLabel})`
+                : 'Total Pendapatan TBS'}
+            </div>
           </div>
           <div className="stat-value" style={{ color: '#047857' }}>
             {formatRupiah(effectiveStats.totalPendapatanBulanIni)}
@@ -313,242 +874,520 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="card stat-card">
           <div className="stat-header">
-            <div className="stat-icon" style={{ background: 'rgba(220, 38, 38, 0.12)' }}>
+            <div
+              className="stat-icon"
+              style={{ background: 'rgba(220, 38, 38, 0.12)' }}
+            >
               <ArrowDownRight size={20} color="#dc2626" />
             </div>
-            <div className="stat-label">{dashboardMonth || selectedYear !== 'all' ? `Pengeluaran (${periodLabel})` : 'Total Pengeluaran'}</div>
+            <div className="stat-label">
+              {dashboardMonth || selectedYear !== 'all'
+                ? `Pengeluaran (${periodLabel})`
+                : 'Total Pengeluaran'}
+            </div>
           </div>
           <div className="stat-value" style={{ color: '#b91c1c' }}>
             {formatRupiah(effectiveStats.totalPengeluaranBulanIni)}
           </div>
           <div className="stat-subtext">
-            <span>Perawatan & Operasional</span>
+            <span>Perawatan &amp; operasional</span>
           </div>
         </div>
       </div>
 
-      {/* Laba Bersih Banner Card */}
+      {/* Ringkasan laba bersih */}
       <div
-        className="card"
-        style={{
-          background: effectiveStats.labaBersihBulanIni >= 0
-            ? 'linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%)'
-            : 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)',
-          borderColor: effectiveStats.labaBersihBulanIni >= 0 ? '#a7f3d0' : '#fecaca',
-          marginBottom: 28,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-          boxShadow: 'var(--shadow-sm)',
-        }}
+        className={`card dash-profit ${
+          effectiveStats.labaBersihBulanIni >= 0 ? 'positive' : 'negative'
+        }`}
       >
-        <div>
-          <div style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', overflowWrap: 'anywhere' }}>
-            {dashboardMonth || selectedYear !== 'all' ? `Estimasi Laba Bersih (${periodLabel})` : 'Estimasi Laba Bersih (Keseluruhan)'}
+        <div className="dash-profit-main">
+          <div className="dash-profit-label">
+            Estimasi Laba Bersih ({periodLabel})
           </div>
-          <div className="laba-value" style={{ color: effectiveStats.labaBersihBulanIni >= 0 ? '#047857' : '#b91c1c' }}>
+          <div
+            className="dash-profit-value"
+            style={{
+              color:
+                effectiveStats.labaBersihBulanIni >= 0 ? '#047857' : '#b91c1c',
+            }}
+          >
             {formatRupiah(effectiveStats.labaBersihBulanIni)}
           </div>
-          <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 4, overflowWrap: 'anywhere', lineHeight: 1.5 }}>
-            Pendapatan (<strong style={{ color: '#047857' }}>{formatRupiah(effectiveStats.totalPendapatanBulanIni)}</strong>) − Pengeluaran (<strong style={{ color: '#b91c1c' }}>{formatRupiah(effectiveStats.totalPengeluaranBulanIni)}</strong>)
+          <div className="dash-profit-meta">
+            Pendapatan{' '}
+            <strong className="income">
+              {formatRupiah(effectiveStats.totalPendapatanBulanIni)}
+            </strong>{' '}
+            − Pengeluaran{' '}
+            <strong className="expense">
+              {formatRupiah(effectiveStats.totalPengeluaranBulanIni)}
+            </strong>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary" onClick={() => onNavigate('laporan')} style={{ fontWeight: 700 }}>
+        <div className="dash-profit-side">
+          <div className="dash-profit-margin">
+            <span>Margin keuntungan</span>
+            <strong>{profitMargin !== null ? `${profitMargin.toFixed(1)}%` : '—'}</strong>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => onNavigate('laporan')}
+          >
             <span>Lihat Analisis Lengkap</span>
             <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
-      {/* Grid 2 Kolom: Jadwal Rotasi & Riwayat Terkini */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 24, marginBottom: 28 }}>
-        {/* Kolom 1: Status Rotasi Panen per Kebun */}
-        <div className="card">
-          <div className="card-header">
+      {/* Rotasi & Panen Terbaru */}
+      <div className="dash-grid-2">
+        <section className="card">
+          <div className="dash-card-header">
             <div>
-              <h3 className="h3-card-title">Rotasi & Pengingat Panen</h3>
-              <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Status kesiapan panen per blok kebun</p>
+              <h3 className="h3-card-title">Rotasi &amp; Pengingat Panen</h3>
+              <p className="dash-card-subtitle">
+                Status per blok berdasarkan transaksi panen aktual dan rotasi.
+              </p>
             </div>
-            <button
-              className="btn btn-secondary"
-              style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-              onClick={() => onNavigate('kebun')}
-            >
-              Semua Kebun
-            </button>
+            <span className="badge badge-info">
+              {harvestReminders.length} blok
+            </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filteredPengingat.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748b', fontSize: '0.88rem' }}>
-                Tidak ada data rotasi panen untuk filter ini.
-              </div>
-            ) : (
-              filteredPengingat.map((p) => {
-                const isOverdue = p.status === 'LEWAT_JADWAL';
-                const isToday = p.status === 'HARI_INI';
-                const isSoon = p.status === 'SEGERA';
-
-                let badgeClass = 'badge-success';
-                let badgeText = `${p.hariTersisa} hari lagi`;
-                if (isOverdue) {
-                  badgeClass = 'badge-danger';
-                  badgeText = `${Math.abs(p.hariTersisa)} hr terlambat`;
-                } else if (isToday) {
-                  badgeClass = 'badge-warning';
-                  badgeText = 'Hari Ini!';
-                } else if (isSoon) {
-                  badgeClass = 'badge-warning';
-                  badgeText = `${p.hariTersisa} hari lagi`;
-                }
-
+          {harvestReminders.length === 0 ? (
+            <EmptyState
+              title="Belum ada blok kebun"
+              description="Tambahkan blok kebun untuk melihat status rotasi panen."
+            />
+          ) : (
+            <div className="dash-reminder-list">
+              {harvestReminders.map((reminder) => {
+                const meta = HARVEST_STATUS_META[reminder.status];
                 return (
-                  <div
-                    key={p.kebunId}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: 12,
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      boxShadow: 'var(--shadow-xs)',
-                      flexWrap: 'wrap',
-                      gap: 10,
-                    }}
-                  >
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.96rem' }}>{p.namaKebun}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                        <Clock size={13} color="#94a3b8" />
-                        <span>Rotasi: {p.rotasiHari} hari</span>
-                        <span>•</span>
-                        <span>Terakhir: {p.terakhirPanen || 'Belum pernah'}</span>
+                  <div className="dash-reminder" key={reminder.kebunId}>
+                    <div className="dash-reminder-main">
+                      <div className="dash-reminder-name">
+                        {reminder.namaKebun}
+                      </div>
+                      <div className="dash-reminder-meta">
+                        <span>
+                          <Clock size={12} /> Rotasi {reminder.rotasiHari} hari
+                        </span>
+                        <span>
+                          Terakhir: {formatDateID(reminder.terakhirPanen)}
+                        </span>
+                        <span>
+                          Berikutnya: {formatDateID(reminder.panenBerikutnya)}
+                        </span>
                       </div>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                      <span className={`badge ${badgeClass}`}>{badgeText}</span>
+                    <div className="dash-reminder-side">
+                      <div className="dash-reminder-status">
+                        <span className={meta.className}>{meta.label}</span>
+                        <span className="dash-days">
+                          {harvestDaysText(reminder)}
+                        </span>
+                      </div>
                       <button
-                        className="btn btn-primary"
-                        style={{ padding: '6px 12px', fontSize: '0.78rem' }}
-                        onClick={() => onOpenPanenModal(p.kebunId)}
-                        title="Catat panen kebun ini"
+                        type="button"
+                        className="btn btn-primary dash-btn-sm"
+                        onClick={() => onOpenPanenModal(reminder.kebunId)}
+                        title="Catat panen blok ini"
                       >
-                        Panen
+                        <Sprout size={14} />
+                        <span>Catat Panen</span>
                       </button>
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
-        </div>
+              })}
+            </div>
+          )}
+        </section>
 
-        {/* Kolom 2: Aktivitas Panen Terakhir */}
-        <div className="card">
-          <div className="card-header">
+        <section className="card">
+          <div className="dash-card-header">
             <div>
               <h3 className="h3-card-title">Panen Terbaru</h3>
-              <p style={{ fontSize: '0.82rem', color: '#64748b' }}>Catatan penerimaan TBS kelapa sawit terkini</p>
+              <p className="dash-card-subtitle">
+                Tanggal, blok, berat, harga, dan total penerimaan.
+              </p>
             </div>
             <button
-              className="btn btn-secondary"
-              style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+              type="button"
+              className="btn btn-secondary dash-btn-sm"
               onClick={() => onNavigate('panen')}
             >
-              Lihat Semua
+              <span>Lihat Semua</span>
+              <ChevronRight size={14} />
             </button>
           </div>
 
-          {filteredPanenList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 0', color: '#64748b', fontSize: '0.9rem' }}>
-              Belum ada data panen yang tercatat.
-            </div>
+          {latestHarvests.length === 0 ? (
+            <EmptyState
+              title="Belum ada panen pada periode ini"
+              description="Ubah filter periode atau catat panen baru untuk menampilkan data."
+            />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {filteredPanenList.slice(0, 5).map((p) => (
-                <div
-                  key={p.id}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    boxShadow: 'var(--shadow-xs)',
-                    flexWrap: 'wrap',
-                    gap: 10,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 10,
-                        background: 'rgba(5, 150, 105, 0.12)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Sprout size={20} color="#059669" />
+            <div className="dash-panen-list">
+              {latestHarvests.map((item) => (
+                <div className="dash-panen-item" key={item.id}>
+                  <div className="dash-panen-main">
+                    <div className="dash-panen-name">
+                      {getKebunName(item.kebun_id)}
                     </div>
-                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getKebunName(p.kebun_id)}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, whiteSpace: 'nowrap' }}>
-                        {p.tanggal} • {p.berat_bersih_kg.toLocaleString('id-ID')} Kg 
-                        {p.berat_brondolan_kg > 0 ? ` + ${p.berat_brondolan_kg.toLocaleString('id-ID')} Kg brondol` : ''}
-                      </div>
+                    <div className="dash-panen-meta">
+                      <span>{formatDateID(item.tanggal)}</span>
+                      <span>
+                        {formatNumber(item.berat_bersih_kg)} kg TBS
+                        {item.berat_brondolan_kg > 0
+                          ? ` + ${formatNumber(item.berat_brondolan_kg)} kg brondol`
+                          : ''}
+                      </span>
+                      <span>@ {formatRupiah(item.harga_per_kg)}/kg</span>
                     </div>
                   </div>
-
-                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, color: '#047857', fontSize: '0.98rem', whiteSpace: 'nowrap' }}>
-                      {formatRupiah(p.total_pendapatan)}
-                    </div>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-                      @ Rp {p.harga_per_kg.toLocaleString('id-ID')}/kg
-                    </div>
+                  <div className="dash-panen-amount">
+                    <strong>{formatRupiah(item.total_pendapatan)}</strong>
+                    <span>Total penerimaan</span>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
 
-      {/* Aksi Cepat Bawah */}
-      <div className="card">
-        <h3 className="h3-card-title" style={{ marginBottom: 14 }}>Aksi Cepat Pengelolaan</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-          <button className="btn btn-secondary" style={{ padding: '14px', justifyContent: 'flex-start', background: '#f8fafc' }} onClick={() => onOpenPanenModal()}>
-            <Sprout size={18} color="#059669" />
-            <span style={{ fontWeight: 700 }}>+ Catat Panen Baru</span>
-          </button>
-          <button className="btn btn-secondary" style={{ padding: '14px', justifyContent: 'flex-start', background: '#f8fafc' }} onClick={onOpenPerawatanModal}>
-            <TrendingUp size={18} color="#0284c7" />
-            <span style={{ fontWeight: 700 }}>+ Catat Perawatan</span>
-          </button>
-          <button className="btn btn-secondary" style={{ padding: '14px', justifyContent: 'flex-start', background: '#f8fafc' }} onClick={onOpenPengeluaranLainModal}>
-            <Receipt size={18} color="#d97706" />
-            <span style={{ fontWeight: 700 }}>+ Pengeluaran Lain</span>
-          </button>
-          <button className="btn btn-secondary" style={{ padding: '14px', justifyContent: 'flex-start', background: '#f8fafc' }} onClick={onOpenKebunModal}>
-            <Trees size={18} color="#059669" />
-            <span style={{ fontWeight: 700 }}>+ Tambah Blok Kebun</span>
+      {/* Aktivitas perawatan */}
+      <section className="card">
+        <div className="dash-card-header">
+          <div>
+            <h3 className="h3-card-title">Aktivitas Perawatan</h3>
+            <p className="dash-card-subtitle">
+              Riwayat perawatan aktual per blok. Tidak ada jadwal rekaan.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary dash-btn-sm"
+            onClick={onOpenPerawatanModal}
+          >
+            <Wrench size={14} />
+            <span>Catat Perawatan</span>
           </button>
         </div>
+
+        {maintenanceOverview.length === 0 ? (
+          <EmptyState
+            title="Belum ada blok kebun"
+            description="Tambahkan blok kebun untuk menampilkan aktivitas perawatan."
+          />
+        ) : (
+          <div className="dash-maint-grid">
+            {maintenanceOverview.map(({ kebun, last }) => (
+              <div className="dash-maint-item" key={kebun.id}>
+                <div className="dash-maint-head">
+                  <strong>{kebun.nama}</strong>
+                  <span
+                    className={
+                      last ? 'dash-status success' : 'dash-status neutral'
+                    }
+                  >
+                    {last ? 'Sudah Dilaksanakan' : 'Belum Ada Aktivitas'}
+                  </span>
+                </div>
+                {last ? (
+                  <>
+                    <div className="dash-maint-meta">
+                      <Wrench size={12} /> {last.jenis_perawatan}
+                    </div>
+                    <div className="dash-maint-meta">
+                      <CalendarDays size={12} /> {formatDateID(last.tanggal)}
+                    </div>
+                    {(last.nama_bahan || last.dosis) && (
+                      <div className="dash-maint-note">
+                        {last.nama_bahan}
+                        {last.nama_bahan && last.dosis ? ' · ' : ''}
+                        {last.dosis}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="dash-maint-meta">
+                    Belum ada transaksi perawatan untuk blok ini.
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Produktivitas & Tren */}
+      <div className="dash-grid-2">
+        <section className="card">
+          <div className="dash-card-header">
+            <div>
+              <h3 className="h3-card-title">Produktivitas per Blok</h3>
+              <p className="dash-card-subtitle">
+                Produksi dan kg/ha pada {periodLabel}.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary dash-btn-sm"
+              onClick={() =>
+                setBlockSort((previous) =>
+                  previous === 'desc' ? 'asc' : 'desc'
+                )
+              }
+              title="Ubah urutan produktivitas"
+            >
+              <ArrowUpDown size={14} />
+              <span>{blockSort === 'desc' ? 'Tertinggi' : 'Terendah'}</span>
+            </button>
+          </div>
+
+          {blockPerformance.length === 0 ? (
+            <EmptyState
+              title="Belum ada blok kebun"
+              description="Tambahkan blok kebun untuk melihat produktivitas."
+            />
+          ) : (
+            <>
+              <div className="dash-table-wrap desktop-only-table">
+                <table className="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Blok Kebun</th>
+                      <th>Luas</th>
+                      <th>Produksi</th>
+                      <th>Produktivitas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blockPerformance.map((row) => (
+                      <tr key={row.kebun.id}>
+                        <td>
+                          <span className="dash-block-name">
+                            {row.kebun.nama}
+                          </span>
+                        </td>
+                        <td>{formatDecimal(row.luas)} Ha</td>
+                        <td>
+                          {row.hasPanen
+                            ? `${formatNumber(row.production)} kg`
+                            : '—'}
+                        </td>
+                        <td>
+                          <div className="dash-yield">
+                            <strong>
+                              {row.yieldKgPerHa !== null
+                                ? `${formatNumber(row.yieldKgPerHa)} kg/ha`
+                                : '—'}
+                            </strong>
+                            <div className="dash-bar-track">
+                              <div
+                                className="dash-bar-fill"
+                                style={{
+                                  width: `${
+                                    row.yieldKgPerHa !== null &&
+                                    maxYield > 0
+                                      ? Math.max(
+                                          4,
+                                          (row.yieldKgPerHa / maxYield) * 100
+                                        )
+                                      : 0
+                                  }%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mobile-only-cards dash-mobile-cards">
+                {blockPerformance.map((row) => (
+                  <div className="dash-mobile-card" key={row.kebun.id}>
+                    <div className="dash-mobile-card-head">
+                      <strong>{row.kebun.nama}</strong>
+                      <span className="badge badge-success">
+                        {row.yieldKgPerHa !== null
+                          ? `${formatNumber(row.yieldKgPerHa)} kg/ha`
+                          : '—'}
+                      </span>
+                    </div>
+                    <div className="dash-mobile-card-meta">
+                      <span>{formatDecimal(row.luas)} Ha</span>
+                      <span>
+                        {row.hasPanen
+                          ? `${formatNumber(row.production)} kg`
+                          : 'Belum ada panen'}
+                      </span>
+                    </div>
+                    <div className="dash-bar-track">
+                      <div
+                        className="dash-bar-fill"
+                        style={{
+                          width: `${
+                            row.yieldKgPerHa !== null && maxYield > 0
+                              ? Math.max(
+                                  4,
+                                  (row.yieldKgPerHa / maxYield) * 100
+                                )
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="card">
+          <div className="dash-card-header">
+            <div>
+              <h3 className="h3-card-title">Tren Produksi 6 Bulan</h3>
+              <p className="dash-card-subtitle">
+                {productionTrend[0]?.fullLabel} –{' '}
+                {productionTrend[productionTrend.length - 1]?.fullLabel}
+              </p>
+            </div>
+            <span
+              className={`dash-status ${
+                trendIndicator.tone === 'positive'
+                  ? 'success'
+                  : trendIndicator.tone === 'danger'
+                    ? 'danger'
+                    : 'neutral'
+              }`}
+            >
+              {trendIndicator.tone === 'positive' ? (
+                <TrendingUp size={12} />
+              ) : trendIndicator.tone === 'danger' ? (
+                <TrendingDown size={12} />
+              ) : (
+                <Minus size={12} />
+              )}
+              {trendIndicator.label}
+            </span>
+          </div>
+
+          <div className="dash-chart-shell">
+            <ProductionTrendChart
+              data={productionTrend}
+              formatKg={(value) => `${formatNumber(value)} kg`}
+              formatNumber={formatNumber}
+            />
+          </div>
+
+          <div className="dash-trend-note">{trendIndicator.detail}</div>
+          <div className="dash-trend-legend">
+            <span>
+              <i className="solid" /> Ada catatan panen
+            </span>
+            <span>
+              <i className="dashed" /> Belum ada data
+            </span>
+          </div>
+        </section>
       </div>
+
+      {/* Insight kondisi kebun */}
+      <section className="card">
+        <div className="dash-card-header">
+          <div>
+            <h3 className="h3-card-title">Insight Kondisi Kebun</h3>
+            <p className="dash-card-subtitle">
+              Ringkasan otomatis dari data aktual dan filter yang dipilih.
+            </p>
+          </div>
+          <span className="badge badge-info">{insights.length} insight</span>
+        </div>
+
+        {insights.length === 0 ? (
+          <EmptyState
+            title="Belum ada insight"
+            description="Tambahkan data kebun, panen, dan perawatan untuk melihat insight."
+          />
+        ) : (
+          <div className="dash-insight-grid">
+            {insights.map((insight) => (
+              <div
+                className={`dash-insight ${insight.tone}`}
+                key={insight.id}
+              >
+                <div className="dash-insight-icon">
+                  {renderInsightIcon(insight.tone)}
+                </div>
+                <div>
+                  <div className="dash-insight-title">{insight.title}</div>
+                  <div className="dash-insight-desc">
+                    {insight.description}
+                  </div>
+                  <div className="dash-insight-basis">{insight.basis}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Aksi cepat */}
+      <section className="card">
+        <div className="dash-card-header">
+          <div>
+            <h3 className="h3-card-title">Aksi Cepat</h3>
+            <p className="dash-card-subtitle">
+              Pintasan pencatatan operasional harian.
+            </p>
+          </div>
+        </div>
+        <div className="dash-actions">
+          <button
+            type="button"
+            className="btn btn-secondary dash-action"
+            onClick={() => onOpenPanenModal()}
+          >
+            <Sprout size={18} color="#059669" />
+            <span>Catat Panen</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary dash-action"
+            onClick={onOpenPerawatanModal}
+          >
+            <Wrench size={18} color="#0284c7" />
+            <span>Catat Perawatan</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary dash-action"
+            onClick={onOpenPengeluaranLainModal}
+          >
+            <Receipt size={18} color="#d97706" />
+            <span>Pengeluaran Lain</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary dash-action"
+            onClick={onOpenKebunModal}
+          >
+            <Trees size={18} color="#059669" />
+            <span>Tambah Blok Kebun</span>
+          </button>
+        </div>
+      </section>
     </div>
   );
 };

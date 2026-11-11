@@ -57,11 +57,12 @@ export function useHarvestNotification(pengingatList: PengingatPanenInfo[]) {
       const key = `${p.kebunId}_${today}`;
       if (!alreadySentToday.has(key) && !sentRef.current.has(key)) {
         const isOverdue = p.status === "LEWAT_JADWAL";
+        const hariTersisa = p.hariTersisa ?? 0;
         const title = isOverdue
           ? `Panen Terlambat: ${p.namaKebun}`
           : `Jadwal Panen Hari Ini: ${p.namaKebun}`;
         const body = isOverdue
-          ? `Blok ${p.namaKebun} sudah ${Math.abs(p.hariTersisa)} hari melewati jadwal panen rotasi ${p.rotasiHari} hari.`
+          ? `Blok ${p.namaKebun} sudah ${Math.abs(hariTersisa)} hari melewati jadwal panen rotasi ${p.rotasiHari} hari.`
           : `Blok ${p.namaKebun} dijadwalkan panen hari ini (rotasi ${p.rotasiHari} hari). Segera catat panen!`;
 
         sendNotification(title, body, `harvest_${p.kebunId}`);

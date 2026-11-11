@@ -998,6 +998,14 @@ export const dataService = {
   calculatePengingatPanen(kebunList: Kebun[], panenList: Panen[]): PengingatPanenInfo[] {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const toDateStr = (date: Date) =>
+      `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const parseDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, (month || 1) - 1, day || 1);
+    };
+    const todayStr = toDateStr(today);
 
     return kebunList.map((kebun) => {
       const kebunPanen = panenList
@@ -1005,25 +1013,47 @@ export const dataService = {
         .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
       const lastHarvestDateStr = kebunPanen.length > 0 ? kebunPanen[0].tanggal : null;
-      let nextHarvestDate: Date;
+      const rotasiHari = kebun.rotasi_panen_hari || 14;
 
-      if (lastHarvestDateStr) {
-        const lastDate = new Date(lastHarvestDateStr);
-        nextHarvestDate = new Date(lastDate);
-        nextHarvestDate.setDate(lastDate.getDate() + (kebun.rotasi_panen_hari || 14));
-      } else {
-        nextHarvestDate = new Date(today);
+      // Belum ada transaksi panen: jadwal tidak bisa dihitung dari data aktual.
+      if (!lastHarvestDateStr) {
+        return {
+          kebunId: kebun.id,
+          namaKebun: kebun.nama,
+          rotasiHari,
+          terakhirPanen: null,
+          panenBerikutnya: null,
+          hariTersisa: null,
+          status: 'BELUM_ADA_JADWAL',
+        };
       }
 
+      const lastDate = parseDate(lastHarvestDateStr);
+      const nextHarvestDate = new Date(lastDate);
+      nextHarvestDate.setDate(lastDate.getDate() + rotasiHari);
+      const panenBerikutnya = toDateStr(nextHarvestDate);
       const diffTime = nextHarvestDate.getTime() - today.getTime();
       const hariTersisa = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Transaksi panen hari ini menandakan siklus saat ini sudah dipanen.
+      if (lastHarvestDateStr === todayStr) {
+        return {
+          kebunId: kebun.id,
+          namaKebun: kebun.nama,
+          rotasiHari,
+          terakhirPanen: lastHarvestDateStr,
+          panenBerikutnya,
+          hariTersisa,
+          status: 'SUDAH_DIPANEN',
+        };
+      }
 
       let status: 'LEWAT_JADWAL' | 'HARI_INI' | 'SEGERA' | 'AMAN';
       if (hariTersisa < 0) {
         status = 'LEWAT_JADWAL';
       } else if (hariTersisa === 0) {
         status = 'HARI_INI';
-      } else if (hariTersisa <= 2) {
+      } else if (hariTersisa <= 3) {
         status = 'SEGERA';
       } else {
         status = 'AMAN';
@@ -1032,9 +1062,9 @@ export const dataService = {
       return {
         kebunId: kebun.id,
         namaKebun: kebun.nama,
-        rotasiHari: kebun.rotasi_panen_hari || 14,
+        rotasiHari,
         terakhirPanen: lastHarvestDateStr,
-        panenBerikutnya: nextHarvestDate.toISOString().split('T')[0],
+        panenBerikutnya,
         hariTersisa,
         status,
       };
