@@ -336,7 +336,7 @@ function calculateStats(
   pengeluaranLainList: PengeluaranLain[],
   period: Period,
   kebunId: string,
-  totalKebun: number
+  kebunIds: string[]
 ): PeriodStats {
   const panen = panenList.filter(
     (item) =>
@@ -351,7 +351,7 @@ function calculateStats(
   const pengeluaranRaw = pengeluaranLainList.filter((item) =>
     matchesPeriod(item.tanggal, period)
   );
-  const pengeluaran = allocatePengeluaranLain(pengeluaranRaw, kebunId, totalKebun);
+  const pengeluaran = allocatePengeluaranLain(pengeluaranRaw, kebunId, kebunIds);
 
   const totalBeratBersih = panen.reduce(
     (total, item) => total + (Number(item.berat_bersih_kg) || 0),
@@ -802,9 +802,9 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         pengeluaranLainList,
         period,
         applied.kebunId,
-        kebunList.length
+        kebunList.map((kebun) => kebun.id)
       ),
-    [panenList, perawatanList, pengeluaranLainList, period, applied.kebunId, kebunList.length]
+    [panenList, perawatanList, pengeluaranLainList, period, applied.kebunId, kebunList]
   );
 
   const previousStats = useMemo(
@@ -816,7 +816,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             pengeluaranLainList,
             previousPeriod,
             applied.kebunId,
-            kebunList.length
+            kebunList.map((kebun) => kebun.id)
           )
         : null,
     [
@@ -825,7 +825,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       pengeluaranLainList,
       previousPeriod,
       applied.kebunId,
-      kebunList.length,
+      kebunList,
     ]
   );
 
@@ -950,7 +950,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
       const otherCost = allocatePengeluaranLain(
         stats.pengeluaranRaw,
         kebun.id,
-        kebunList.length
+        kebunList.map((kebun) => kebun.id)
       ).reduce((total, item) => total + (Number(item.jumlah) || 0), 0);
       const totalExpense = harvestCost + maintenanceCost + otherCost;
       const laba = revenue - totalExpense;

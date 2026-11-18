@@ -356,21 +356,32 @@ async function syncPending(): Promise<number> {
 export function allocatePengeluaranLain(
   list: PengeluaranLain[],
   kebunId: string,
-  totalKebun: number
+  kebunIds: string[]
 ): PengeluaranLain[] {
   if (kebunId === 'all') return list;
 
+  const totalKebun = kebunIds.length;
+  const kebunIndex = kebunIds.indexOf(kebunId);
+  if (totalKebun === 0 || kebunIndex < 0) {
+    return list.filter((item) => item.kebun_id === kebunId);
+  }
+
   return list
-    .filter((item) => item.kebun_id === kebunId || (!item.kebun_id && totalKebun > 0))
+    .filter((item) => item.kebun_id === kebunId || !item.kebun_id)
     .map((item) => {
       if (item.kebun_id === kebunId) return item;
 
-      const share = 1 / totalKebun;
-      const label = `Bagian umum 1/${totalKebun}`;
+      // Bagi dalam satuan sen agar total seluruh kebun persis sama dengan
+      // nominal asli; sisa pembulatan dibagikan ke kebun urutan awal.
+      const totalSen = Math.round((Number(item.jumlah) || 0) * 100);
+      const dasarSen = Math.floor(totalSen / totalKebun);
+      const sisaSen = totalSen - dasarSen * totalKebun;
+      const bagianSen = dasarSen + (kebunIndex < sisaSen ? 1 : 0);
+      const label = `Bagian umum ${kebunIndex + 1}/${totalKebun}`;
       return {
         ...item,
         id: `${item.id}__alloc_${kebunId}`,
-        jumlah: (Number(item.jumlah) || 0) * share,
+        jumlah: bagianSen / 100,
         keterangan: item.keterangan ? `${item.keterangan} (${label})` : label,
       };
     });

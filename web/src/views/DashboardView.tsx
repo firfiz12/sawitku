@@ -304,9 +304,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         : allocatePengeluaranLain(
             pengeluaranLainList,
             filterKebunId,
-            kebunList.length
+            kebunList.map((kebun) => kebun.id)
           ),
-    [filterKebunId, pengeluaranLainList, kebunList.length]
+    [filterKebunId, pengeluaranLainList, kebunList]
   );
 
   const panenInPeriod = useMemo(
