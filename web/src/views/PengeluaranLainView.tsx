@@ -77,6 +77,7 @@ export const PengeluaranLainView: React.FC<PengeluaranLainViewProps> = ({
     'Upah Lansir / Tambahan',
     'Pajak / PBB / Izin',
     'Konsumsi Pekerja',
+    'Bahan Organik',
     'Lain-lain',
   ];
 
